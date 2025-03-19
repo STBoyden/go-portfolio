@@ -5,6 +5,7 @@
     ]
   },
   "devDependencies": {
+    "daisyui": "^5.0.6",
     "rust-just": "^1.40.0"
   },
   "dependencies": {
