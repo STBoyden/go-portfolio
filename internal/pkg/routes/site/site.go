@@ -9,8 +9,10 @@ import (
 )
 
 func Router() *http.ServeMux {
+	root := views.Root
+
 	router := http.NewServeMux()
-	router.Handle("/", templ.Handler(views.Index()))
+	router.Handle("/", templ.Handler(root(views.Index())))
 
 	return router
 }
