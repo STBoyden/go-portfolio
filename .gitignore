@@ -1,3 +1,4 @@
 *_templ.go
 /build/
 /node_modules/
+/tmp

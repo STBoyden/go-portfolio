@@ -1,9 +1,11 @@
-install_tools_and_deps:
+install_deps:
     pnpm install
+    go mod download
+    go mod verify
 
-generate: install_tools_and_deps
+generate:
     go generate ./internal/pkg/routes/site
-    node_modules/.bin/tailwindcss -i ./static/_styles.css -o ./static/styles.css
+    node_modules/.bin/tailwindcss -i ./static/css/_styles.css -o ./static/css/styles.css
 
 build: generate
     mkdir -p build
