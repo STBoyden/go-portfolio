@@ -1,7 +1,33 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-    themes:
-        light --default,
-        dark --prefersDark,
-        all;
+  themes: light --default, dark --prefersDark, all;
+}
+
+@theme {
+  --default-font-family: "Monaspace Krypton";
+  --default-mono-font-family: "Monaspace Argon";
+}
+
+.font-header {
+  font-family: "Monaspace Xenon Bold";
+}
+
+@font-face {
+  font-family: "Monaspace Krypton";
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/MonaspaceKrypton-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Monaspace Argon";
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/MonaspaceArgon-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Monaspace Xenon Bold";
+  font-style: bold;
+  src: url("/static/fonts/MonaspaceXenon-Bold.woff2") format("woff2");
 }

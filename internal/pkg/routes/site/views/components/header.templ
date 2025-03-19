@@ -1,0 +1,30 @@
+package components
+
+type HeaderLevel uint8
+
+const (
+	bump HeaderLevel = iota
+	H1
+	H2
+	H3
+	H4
+	H5
+	H6
+	Title
+	Subtitle
+)
+
+templ Header(headerLevel HeaderLevel, text string) {
+	switch headerLevel {
+		case Title:
+			<h1 class="font-header text-2xl md:text-3xl font-bold mb-4">{ text }</h1>
+		case Subtitle:
+			<h2 class="text-xl md:text-2xl font-black mb-2">{ text }</h2>
+		case H2:
+			<h2 class="font-header text-lg font-bold mb-2">{ text }</h2>
+		case H3:
+			<h3 class="font-header text-sm font-bold mb-2">{ text }</h3>
+		default:
+			<h1 class="font-header text-xl font-bold mb-2">{ text }</h1>
+	}
+}

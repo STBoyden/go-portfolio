@@ -1,0 +1,16 @@
+package components
+
+var (
+	hyperlinkClasses = "text-accent hover:underline"
+)
+
+templ Hyperlink(display interface{}, link string) {
+	switch inner := display.(type) {
+		case templ.Component:
+			<a href={ templ.SafeURL(link) } class={ hyperlinkClasses }>
+				@inner
+			</a>
+		case string:
+			<a href={ templ.SafeURL(link) } class={ hyperlinkClasses }>{ inner }</a>
+	}
+}
