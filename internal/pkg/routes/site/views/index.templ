@@ -2,6 +2,21 @@ package views
 
 import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
 
+type linkPair struct {
+	display string
+	link    string
+}
+
+func getLinks() []linkPair {
+	links := []linkPair{
+		linkPair{display: "GitHub", link: "https://github.com/STBoyden"},
+		linkPair{display: "BlueSky", link: "https://bsky.app/profile/stboyden.com"},
+		linkPair{display: "Email", link: "mailto:sam@stboyden.com"},
+	}
+
+	return links
+}
+
 templ Index() {
 	<div class="hero my-auto">
 		<div class="hero-content flex-col lg:flex-row-reverse">
@@ -18,14 +33,24 @@ templ Index() {
 			</div>
 		</div>
 	</div>
-	<div class="my-2 w-full h-full flex flex-col place-items-center">
-		<div class="mx-8 md:mx-12 lg:mx-16 my-2 max-w-[75%]">
+	<div class="my-2 w-full h-full flex flex-col place-items-center px-8 md:px-12 lg:px16">
+		<div class="w-[75%] max-w-[75%]">
 			@components.Header(components.H1, "For recruiters...")
 			<p class="md:text-lg mb-4">
 				{ "If you are here as a recruiter and wish to get in contact with me, please email me at " }
 				@components.Hyperlink("sam@stboyden.com", "mailto:sam@stboyden.com")
 				{ " with a suitable subject title. From there I can supply you with a CV (Resumé) as appropriate." }
 			</p>
+		</div>
+		<div class="w-[75%] max-w-[75%] mt-8 text-center">
+			@components.Header(components.H1, "Links")
+			<div class="flex flex-row items-center">
+				for _, v := range getLinks() {
+					<div class="mx-auto">
+						@components.Hyperlink(v.display, v.link)
+					</div>
+				}
+			</div>
 		</div>
 	</div>
 }
