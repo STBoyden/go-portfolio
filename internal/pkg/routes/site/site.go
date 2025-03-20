@@ -9,10 +9,23 @@ import (
 )
 
 func Router() *http.ServeMux {
-	root := views.Root
-
 	router := http.NewServeMux()
-	router.Handle("/", templ.Handler(root(views.Index())))
+
+	router.Handle("GET /{$}", templ.Handler(views.Root(views.Index())))
+	router.Handle("GET /about", templ.Handler(views.Root(views.About())))
+	router.Handle("GET /blog", templ.Handler(views.Root(views.Blog())))
+
+	router.HandleFunc("GET /page/index", func(w http.ResponseWriter, r *http.Request) {
+		_ = views.Index().Render(r.Context(), w)
+	})
+
+	router.HandleFunc("GET /page/about", func(w http.ResponseWriter, r *http.Request) {
+		_ = views.About().Render(r.Context(), w)
+	})
+
+	router.HandleFunc("GET /page/blog", func(w http.ResponseWriter, r *http.Request) {
+		_ = views.Blog().Render(r.Context(), w)
+	})
 
 	return router
 }

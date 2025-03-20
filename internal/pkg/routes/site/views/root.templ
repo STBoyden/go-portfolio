@@ -14,8 +14,10 @@ templ Root(subview templ.Component) {
 		</head>
 		<body>
 			@components.Navbar()
-			<div class="p-4">
-				@subview
+			<div class="p-4" id="body">
+				if subview != nil {
+					@subview
+				}
 			</div>
 		</body>
 	</html>
