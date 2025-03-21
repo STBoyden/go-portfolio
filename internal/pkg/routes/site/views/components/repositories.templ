@@ -16,7 +16,7 @@ templ Repositories(repos []types.Repository) {
 				title={ repo.Url }
 			>
 				<div class="card-body">
-					<h2 class="card-title">{ repo.Name }</h2>
+					<h2 class="card-title">{ repo.Owner + "/"+ repo.Name }</h2>
 					if repo.Description != "" {
 						<p>{ repo.Description }</p>
 					}

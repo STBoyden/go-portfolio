@@ -25,9 +25,14 @@ type languageItems struct {
 	Nodes []languageEntry
 }
 
+type owner struct {
+	Login gh.String
+}
+
 type repository struct {
 	Url         gh.URI
 	Name        gh.String
+	Owner       owner
 	Description gh.String
 	Languages   languageItems `graphql:"languages(first: 3, orderBy: $languagesOrderBy)"`
 }
@@ -78,6 +83,7 @@ func GithubApi() *http.ServeMux {
 			entry := pinned.Entry
 
 			repository := types.Repository{
+				Owner:       string(entry.Owner.Login),
 				Name:        string(entry.Name),
 				Description: string(entry.Description),
 				Url:         entry.Url.String(),

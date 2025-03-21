@@ -1,5 +1,19 @@
 package components
 
-templ Subtitle(text string) {
-	<h2 class="font-header text-xl md:text-2xl mb-2">{ text }</h2>
+func outputClasses(s ...string) string {
+	d := "font-header text-xl md:text-2xl"
+
+	if s == nil {
+		d += " mb-2"
+	}
+
+	for _, str := range s {
+		d += " " + str
+	}
+
+	return d
+}
+
+templ Subtitle(text string, classes ...string) {
+	<h2 class={ outputClasses(classes...) }>{ text }</h2>
 }

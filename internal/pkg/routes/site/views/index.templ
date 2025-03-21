@@ -10,8 +10,9 @@ type linkPair struct {
 func getLinks() []linkPair {
 	links := []linkPair{
 		linkPair{display: "GitHub", link: "https://github.com/STBoyden"},
-		linkPair{display: "BlueSky", link: "https://bsky.app/profile/stboyden.com"},
+		linkPair{display: "LinkedIn", link: "https://www.linkedin.com/in/samuel-boyden/"},
 		linkPair{display: "Email", link: "mailto:sam@stboyden.com"},
+		linkPair{display: "BlueSky", link: "https://bsky.app/profile/stboyden.com"},
 	}
 
 	return links
@@ -22,11 +23,17 @@ templ Index() {
 		<div class="hero-content flex-col lg:flex-row">
 			<img
 				src="/static/images/avatar.jpg"
-				class="max-w-[256px] rounded-2xl border-1 [visibility:collapse] md:visible"
+				class="max-w-[256px] rounded-2xl border-1 [display:none] md:[display:unset]"
 			/>
 			<div class="mx-8">
-				@components.Title("Samuel Boyden")
-				@components.Subtitle("Software Developer | Reading, United Kingdom")
+				@components.Title("Samuel Boyden", "text-center", "md:text-left")
+				<span class="[display:none] md:[display:unset]">
+					@components.Subtitle("Software Developer | Reading, United Kingdom")
+				</span>
+				<span class="md:[display:none]">
+					@components.Subtitle("Software Developer", "mb-0", "text-center")
+					@components.Subtitle("Reading, United Kingdom", "mb-2", "text-center")
+				</span>
 				<p class="text-lg md:text-xl text-base-content">
 					Samuel is a developer primarily focused on back-end web development 
 					and app development - prioritising languages like Go, Kotlin and 
@@ -59,7 +66,9 @@ templ Index() {
 		</div>
 		<div class="lg:w-[75%] lg:max-w-[75%] mt-8">
 			@components.Header(components.H1, "Projects")
-			<div hx-get="/api/v1/github/projects" hx-swap="outerHTML" hx-target="this" hx-trigger="load"></div>
+			<div hx-get="/api/v1/github/projects" hx-swap="outerHTML" hx-target="this" hx-trigger="load">
+				Loading..
+			</div>
 		</div>
 	</div>
 }
