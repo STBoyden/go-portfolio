@@ -4,7 +4,7 @@
 #
 
 app = 'go-portfolio'
-primary_region = 'cdg'
+primary_region = 'lhr'
 
 [build]
 
@@ -20,6 +20,6 @@ min_machines_running = 0
 processes = ['app']
 
 [[vm]]
-memory = '1gb'
+memory = '512m'
 cpu_kind = 'shared'
 cpus = 1

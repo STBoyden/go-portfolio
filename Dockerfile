@@ -13,5 +13,7 @@ RUN node_modules/.bin/just build
 
 FROM debian:bookworm
 
+RUN apt-get update && apt-get install ca-certificates -y
+RUN update-ca-certificates
 COPY --from=builder /usr/src/app/build/portfolio /usr/local/bin/
 CMD ["portfolio"]
