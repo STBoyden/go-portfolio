@@ -5,9 +5,12 @@ import (
 
 	fs "github.com/STBoyden/go-portfolio"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes"
+	"github.com/STBoyden/gotenv/v2"
 )
 
 func main() {
+	_, _ = gotenv.LoadEnvFromFS(fs.EnvFile)
+
 	mux := http.NewServeMux()
 
 	// Forward all endpoints to routes.Router()

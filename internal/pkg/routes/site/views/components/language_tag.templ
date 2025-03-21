@@ -1,0 +1,22 @@
+package components
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/common/types"
+import "fmt"
+
+func withBadgeColour(language types.Language) string {
+	s := fmt.Sprintf(`
+	<style>
+	.badge-%s {
+		--badge-fg: var(--color-base-content);
+		--badge-color: %s;
+	}
+	</style>
+	`, language.Name, language.HexColour)
+
+	return s
+}
+
+templ LanguageTag(language types.Language) {
+	@templ.Raw(withBadgeColour(language))
+	<div class={ fmt.Sprintf("badge badge-outline border-2 badge-%s", language.Name) }>{ language.Name }</div>
+}

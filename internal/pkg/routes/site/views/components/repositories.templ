@@ -1,0 +1,32 @@
+package components
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/common/types"
+
+templ Repositories(repos []types.Repository) {
+	<script>
+		function goToRepo(repoLink) {
+			window.location.href = repoLink
+		}
+	</script>
+	<div class="flex flex-col lg:grid lg:grid-cols-3 gap-4 justify-center">
+		for _, repo := range repos {
+			<div
+				class="card w-full bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
+				onclick={ templ.JSFuncCall("goToRepo", repo.Url) }
+				title={ repo.Url }
+			>
+				<div class="card-body">
+					<h2 class="card-title">{ repo.Name }</h2>
+					if repo.Description != "" {
+						<p>{ repo.Description }</p>
+					}
+					<div class="justify-left card-actions">
+						for _, language := range repo.Languages {
+							@LanguageTag(language)
+						}
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+}
