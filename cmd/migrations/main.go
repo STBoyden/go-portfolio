@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -9,13 +8,13 @@ import (
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/gotenv/v2"
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	migratePgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	env, _ := gotenv.LoadEnvFromFS(fs.EnvFile)
+	env, _ := gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
 
 	var dbUrl string
 	if s, ok := env["DB_URL"]; !ok {
@@ -24,9 +23,9 @@ func main() {
 		dbUrl = strings.Trim(s, "\"")
 	}
 
-	db := utils.Must(sql.Open("postgres", dbUrl))
-	driver := utils.Must(pgx.WithInstance(db, &pgx.Config{}))
-	migrations := utils.Must(migrate.NewWithDatabaseInstance("file://./migrations/", "postgres", driver))
+	p := &migratePgx.Postgres{}
+	driver := utils.Must(p.Open(dbUrl))
+	migrations := utils.Must(migrate.NewWithDatabaseInstance("file://./migrations/", "pgx", driver))
 
 	err := migrations.Up()
 	if err != nil && !strings.Contains(err.Error(), "no change") {

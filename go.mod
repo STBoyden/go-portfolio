@@ -3,7 +3,7 @@ module github.com/STBoyden/go-portfolio
 go 1.24.0
 
 require (
-	github.com/STBoyden/gotenv/v2 v2.0.2
+	github.com/STBoyden/gotenv/v2 v2.0.3
 	github.com/a-h/templ v0.3.833
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
