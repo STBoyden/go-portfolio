@@ -1,0 +1,13 @@
+package components
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+
+templ PostList(posts []persistence.Post) {
+	if len(posts) == 0 {
+		<div>
+			No blog posts (yet...)
+		</div>
+	} else {
+		<div></div>
+	}
+}

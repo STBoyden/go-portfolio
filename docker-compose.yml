@@ -1,0 +1,12 @@
+services:
+  db:
+    image: "postgres:latest"
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=pg
+      - POSTGRES_PASSWORD=aePvz2Le4tz4hyNxnQQ
+      - POSTGRES_DB=portfolio
+
+# Local dev database:
+# DB_URL=postgresql://pg:aePvz2Le4tz4hyNxnQQ@localhost:5432/portfolio?sslmode=disable

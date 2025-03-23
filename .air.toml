@@ -5,15 +5,21 @@ tmp_dir = "tmp"
 [build]
 args_bin = []
 bin = "./build/portfolio"
-cmd = "just build"
+cmd = "just generate_db_types && just build"
 delay = 1000
-exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+exclude_dir = [
+  "assets",
+  "tmp",
+  "vendor",
+  "testdata",
+  "internal/pkg/persistence",
+]
 exclude_file = []
 exclude_regex = ["_test.go", "_templ.go"]
 exclude_unchanged = false
 follow_symlink = false
 full_bin = ""
-include_ext = ["go", "tpl", "tmpl", "html", "templ"]
+include_ext = ["go", "tpl", "tmpl", "html", "templ", "sql"]
 include_file = [
   "package.json",
   "pnpm-lock.yaml",
