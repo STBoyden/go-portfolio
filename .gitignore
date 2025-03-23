@@ -3,4 +3,5 @@
 /node_modules/
 /tmp
 /static/css/styles.css
+/internal/pkg/persistence
 .env
