@@ -26,3 +26,7 @@ clean:
 
 run: build
     ./build/portfolio
+
+[confirm("Please make sure that DB_URL is set to a production database URL AND that the secret is pushed to fly.\nPress ENTER to continue, use Ctrl+C to cancel > ")]
+deploy: generate_db_types
+    fly deploy
