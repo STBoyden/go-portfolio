@@ -20,7 +20,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Forward all endpoints to routes.Router()
-	mux.Handle("/", middleware.Logging(routes.Router(fs.StaticFS)))
+	mux.Handle("/", middleware.Handlers.Logger(routes.Router(fs.StaticFS)))
 
 	log.Println("Serving http://localhost:8080...")
 	err := http.ListenAndServe(":8080", mux)

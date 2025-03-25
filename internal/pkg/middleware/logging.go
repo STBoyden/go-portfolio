@@ -1,54 +1,109 @@
 package middleware
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-type responseWriter struct {
+// LoggingMiddleware is an extension over [http.ResponseWriter] to standardise
+// logging throughout the application. If the [http.Handler] has been wrapped in
+// the Logger wrapper function, then all children will be able to cast their
+// [http.ResponseWriter] types to LoggingMiddleware and use
+// [LoggingMiddleware.Log] directly. Additionally, middleware's that require
+// LoggingMiddleware can implement a Log method to modify the default behaviour.
+// For example, see [AuthMiddleware.Log].
+type LoggingMiddleware struct {
 	http.ResponseWriter
-	status      int
-	wroteHeader bool
+
+	start             time.Time
+	associatedRequest *http.Request
+	requestID         uuid.UUID
+	status            int
+	wroteHeader       bool
 }
 
-func wrapResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{ResponseWriter: w}
+var _ middleware = (*LoggingMiddleware)(nil)
+
+func loggingWrapResponseWriter(w http.ResponseWriter, r *http.Request, s time.Time) *LoggingMiddleware {
+	return &LoggingMiddleware{ResponseWriter: w, associatedRequest: r, requestID: uuid.New(), start: s}
 }
 
-func (w *responseWriter) Status() int {
-	return w.status
+// Status returns the current status of the request.
+func (l *LoggingMiddleware) Status() int {
+	return l.status
 }
 
-func (w *responseWriter) WriteHeader(statusCode int) {
-	if w.wroteHeader {
+// PrepareHeader sets the status code of the request without calling
+// [LoggingMiddleware.WriteHeader].
+func (l *LoggingMiddleware) PrepareHeader(statusCode int) {
+	l.status = statusCode
+}
+
+// WritePreparedHeader writes the previously prepared w.status to the status
+// header for the request. Subsequent calls to
+// [LoggingMiddleware.WritePreparedHeader] or [LoggingMiddleware.WriteHeader]
+// are superflous and will be ignored.
+func (l *LoggingMiddleware) WritePreparedHeader() {
+	l.WriteHeader(l.status)
+}
+
+// WriteHeader writes the given statusCode to the status header for the request.
+// Subsequent calls to [LoggingMiddleware.WritePreparedHeader] or
+// [LoggingMiddleware.WriteHeader] are superflous and will be ignored.
+func (l *LoggingMiddleware) WriteHeader(statusCode int) {
+	if l.wroteHeader {
 		return
 	}
 
-	w.status = statusCode
-	w.ResponseWriter.WriteHeader(statusCode)
-	w.wroteHeader = true
+	l.status = statusCode
+	l.ResponseWriter.WriteHeader(statusCode)
+	l.wroteHeader = true
 }
 
-// Basic logging middleware.
-//
-// By default, this will log every single request received to this server in the
-// following format: `received method=%s status=%d path=%s duration=%v`. For
-// example, a successful request to "/" would create a log of `received
-// method=GET status=0 path=/ duration=120.0µs`
-func Logging(next http.Handler) http.Handler {
+func (l *LoggingMiddleware) Log(prefix, format string, v ...any) {
+	f := "request_id=%v method=%s status=%s path=%s elapsed=%v"
+	if format != "" {
+		f = fmt.Sprintf("%s\n\t[%s] msg=%s", f, prefix, format)
+	}
+
+	status := fmt.Sprintf("%d", l.status)
+	if l.status == 0 {
+		status = "pending"
+	}
+
+	args := []any{
+		l.requestID.String()[:8],
+		l.associatedRequest.Method,
+		status,
+		l.associatedRequest.URL.EscapedPath(),
+		time.Since(l.start),
+	}
+	args = slices.Concat(args, v)
+
+	log.Printf(f, args...)
+}
+
+func loggerWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var wrapped *LoggingMiddleware
 		defer func() {
 			if err := recover(); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				log.Printf("an internal server error occurred. cause: %v\n", err)
+				wrapped.Log("http", "before error: %v", wrapped.wroteHeader)
+				wrapped.WriteHeader(http.StatusInternalServerError)
+				wrapped.Log("http", "an internal server error occurred. cause: %v", err)
 			}
 		}()
 
 		start := time.Now()
-		wrapped := wrapResponseWriter(w)
+		wrapped = loggingWrapResponseWriter(w, r, start)
 		next.ServeHTTP(wrapped, r)
+		wrapped.WritePreparedHeader()
 
-		log.Printf("received method=%s status=%d path=%s duration=%v\n", r.Method, wrapped.status, r.URL.EscapedPath(), time.Since(start))
+		wrapped.Log("http", "finished handling request")
 	})
 }
