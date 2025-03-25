@@ -11,13 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type level interface{ levelMarker() }
+type level interface{ loggerLevelMarker() }
 
 type debug struct{ level }
 type info struct{ level }
 type warn struct{ level }
 type _error struct{ level }
 
+// Global logging levels for the Logging middleware.
+//
 //nolint:gochecknoglobals // These are logging levels and should be global.
 var (
 	Debug = debug{}

@@ -50,6 +50,8 @@ type middlewares struct {
 	Authorisation Wrapper
 }
 
+// Handlers is a package level variable containing middleware wrapper functions.
+//
 //nolint:gochecknoglobals // This is a package level variable containing middleware wrapper functions.
 var Handlers = &middlewares{
 	Logger:        loggerWrapper,
