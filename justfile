@@ -13,6 +13,14 @@ run_migrations:
 generate_db_types: run_migrations
     go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
+build_docs: generate generate_db_types
+
+_docs: build_docs
+    go tool golang.org/x/pkgsite/cmd/pkgsite -http=:6060
+
+docs:
+    go tool github.com/air-verse/air -c .air.docs.toml
+
 build: generate
     mkdir -p build
     go build -o build/portfolio cmd/main/main.go

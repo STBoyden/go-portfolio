@@ -1,0 +1,61 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+args_bin = ["_docs"]
+full_bin = "$(which just)"
+cmd = "just build_docs"
+delay = 1000
+exclude_dir = [
+  "assets",
+  "tmp",
+  "vendor",
+  "testdata",
+  "internal/pkg/persistence",
+]
+exclude_file = []
+exclude_regex = ["_test.go", "_templ.go"]
+exclude_unchanged = false
+follow_symlink = false
+include_ext = ["go", "tpl", "tmpl", "html", "templ", "sql"]
+include_file = [
+  "package.json",
+  "pnpm-lock.yaml",
+  "static/css/_styles.css",
+  ".env",
+]
+kill_delay = "0s"
+log = "build-errors.log"
+poll = false
+poll_interval = 0
+post_cmd = []
+pre_cmd = []
+rerun = false
+rerun_delay = 500
+send_interrupt = false
+stop_on_error = false
+
+[color]
+app = ""
+build = "yellow"
+main = "magenta"
+runner = "green"
+watcher = "cyan"
+
+[log]
+main_only = false
+silent = false
+time = false
+
+[misc]
+clean_on_exit = false
+
+[proxy]
+app_port = 0
+enabled = false
+proxy_port = 0
+
+[screen]
+clear_on_rebuild = false
+keep_scroll = true

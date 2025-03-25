@@ -1,6 +1,6 @@
 module github.com/STBoyden/go-portfolio
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/STBoyden/gotenv/v2 v2.0.3
@@ -39,6 +39,8 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.145.0 // indirect
 	github.com/google/cel-go v0.22.1 // indirect
+	github.com/google/licensecheck v0.3.1 // indirect
+	github.com/google/safehtml v0.0.3-0.20211026203422-d6f0e11a5516 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -80,6 +82,7 @@ require (
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/pkgsite v0.0.0-20250321205054-d037ac96d503 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
@@ -94,10 +97,12 @@ require (
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/sqlite v1.34.5 // indirect
+	rsc.io/markdown v0.0.0-20231214224604-88bb533a6020 // indirect
 )
 
 tool (
 	github.com/a-h/templ/cmd/templ
 	github.com/air-verse/air
 	github.com/sqlc-dev/sqlc/cmd/sqlc
+	golang.org/x/pkgsite/cmd/pkgsite
 )
