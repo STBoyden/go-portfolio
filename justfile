@@ -13,6 +13,10 @@ run_migrations:
 generate_db_types: run_migrations
     go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
+ci_prepare:
+    go generate ./internal/pkg/routes/site
+    go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
+
 build_docs: generate generate_db_types
 
 _docs: build_docs

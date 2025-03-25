@@ -17,9 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v3
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+
+      - name: prepare repository for CI linting
+        run: just ci_prepare
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
