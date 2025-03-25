@@ -5,8 +5,8 @@ package middleware
 import "net/http"
 
 type (
-	middleware        interface{ http.ResponseWriter }
-	MiddlewareWrapper func(next http.Handler) http.Handler
+	middleware interface{ http.ResponseWriter }
+	Wrapper    func(next http.Handler) http.Handler
 )
 
 type middlewares struct {
@@ -40,16 +40,17 @@ type middlewares struct {
 	// Child middlewares can reimplement the Log method to have a consistent prefix
 	// for the messsage portion of the log which is output on a separate line.See
 	// [middleware.AuthMiddleware] for an example of implementation.
-	Logger MiddlewareWrapper
+	Logger Wrapper
 
 	// Authorisation middleware handles authentication of requests for paths
 	// handle by the given next [http.Handler].
 	//
 	// Authorisation requires that the Logger middleware wrapper over or is a
 	// parent [http.Handler].
-	Authorisation MiddlewareWrapper
+	Authorisation Wrapper
 }
 
+//nolint:gochecknoglobals // This is a package level variable containing middleware wrapper functions.
 var Handlers = &middlewares{
 	Logger:        loggerWrapper,
 	Authorisation: authorisationWrapper,

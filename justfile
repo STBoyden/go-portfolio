@@ -25,6 +25,9 @@ build: generate
     mkdir -p build
     go build -o build/portfolio cmd/main/main.go
 
+lint: build
+    go tool -modfile=golangci-lint.mod github.com/golangci/golangci-lint/cmd/golangci-lint run
+
 dev:
     go tool github.com/air-verse/air
 
@@ -36,6 +39,6 @@ run: build
     ./build/portfolio
 
 [confirm("Please make sure that DB_URL is set to a production database URL.\nPress ENTER to continue, use Ctrl+C to cancel > ")]
-deploy: generate_db_types
+deploy: generate_db_types lint
     source .env
     fly deploy

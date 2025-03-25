@@ -31,41 +31,43 @@ func (a *AuthMiddleware) Details() (*uuid.UUID, bool) {
 		tokenCopy := a.token
 
 		return &tokenCopy, true
-	} else {
-		return nil, false
 	}
+
+	return nil, false
 }
 
 // Wrapper over [LoggingMiddleware.Log] to standardise the prefix.
-func (a *AuthMiddleware) Log(format string, v ...any) {
-	a.LoggingMiddleware.Log("auth", format, v...)
+func (a *AuthMiddleware) Log(level level, format string, v ...any) {
+	a.LoggingMiddleware.Log(level, "auth", format, v...)
 }
 
 func (a *AuthMiddleware) Authorise(ctx context.Context, requestHeaders http.Header) bool {
 	s, ok := requestHeaders["Authorization"]
 	if !ok || len(s) == 0 {
-		a.Log("authorisation failed: missing header")
+		a.Log(Error, "authorisation failed: missing header")
 
 		return false
 	}
 
-	splits := strings.SplitN(s[0], " ", 2)
-	if len(splits) != 2 {
-		a.Log("authorisation failed: incorrect header format")
+	const expectedLength = 2
+
+	splits := strings.SplitN(s[0], " ", expectedLength)
+	if len(splits) != expectedLength {
+		a.Log(Error, "authorisation failed: incorrect header format")
 
 		return false
 	}
 
 	method := splits[0]
 	if method != "Bearer" {
-		a.Log("authorisation failed: incorrect header format")
+		a.Log(Error, "authorisation failed: incorrect header format")
 
 		return false
 	}
 
 	token, err := uuid.Parse(splits[1])
 	if err != nil {
-		a.Log("authorisation failed: incorrect token format")
+		a.Log(Error, "authorisation failed: incorrect token format")
 
 		return false
 	}
@@ -74,14 +76,14 @@ func (a *AuthMiddleware) Authorise(ctx context.Context, requestHeaders http.Head
 
 	exists, err := queries.CheckAuthExists(ctx, token)
 	if !exists || err != nil {
-		a.Log("authorisation failed: token %v does not exist in database", token)
+		a.Log(Error, "authorisation failed: token %v does not exist in database", token)
 
 		return false
 	}
 
 	expired, err := queries.CheckIfAuthExpired(ctx, token)
 	if expired || err != nil {
-		a.Log("authorisation failed: token %v's authorisation has expired", token)
+		a.Log(Error, "authorisation failed: token %v's authorisation has expired", token)
 
 		return false
 	}
@@ -101,7 +103,7 @@ func authorisationWrapper(next http.Handler) http.Handler {
 		_w := utils.MustCast[LoggingMiddleware](__w)
 		w := authWrapResponseWriter(_w)
 
-		w.Log("checking authorisation for path=%s", r.URL.EscapedPath())
+		w.Log(Info, "checking authorisation for path=%s", r.URL.EscapedPath())
 
 		authed := w.Authorise(r.Context(), r.Header)
 		if authed {

@@ -30,6 +30,7 @@ type owner struct {
 }
 
 type repository struct {
+	//nolint:revive,stylecheck // This is a struct to represent a GraphQL object, and as such needs to be named this way.
 	Url         gh.URI
 	Name        gh.String
 	Owner       owner
@@ -51,7 +52,7 @@ type pinnedItemsQuery struct {
 	} `graphql:"user(login: \"STBoyden\")"`
 }
 
-func GithubApi() *http.ServeMux {
+func GithubAPI() *http.ServeMux {
 	r := http.NewServeMux()
 
 	token, ok := os.LookupEnv("GITHUB_TOKEN")
@@ -86,7 +87,7 @@ func GithubApi() *http.ServeMux {
 				Owner:       string(entry.Owner.Login),
 				Name:        string(entry.Name),
 				Description: string(entry.Description),
-				Url:         entry.Url.String(),
+				URL:         entry.Url.String(),
 			}
 
 			languages := make([]types.Language, len(entry.Languages.Nodes))

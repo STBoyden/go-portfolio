@@ -21,7 +21,8 @@ type DB struct {
 	context.Context
 }
 
-var Database *DB = nil
+//nolint:gochecknoglobals // This is a global variable that is used to store the database connection.
+var Database *DB
 
 func ConnectDB() {
 	if Database != nil {
@@ -29,10 +30,9 @@ func ConnectDB() {
 	}
 
 	var url string
-	if s, ok := os.LookupEnv("DB_URL"); !ok {
+	var ok bool
+	if url, ok = os.LookupEnv("DB_URL"); !ok {
 		panic("DB_URL environment variable not set")
-	} else {
-		url = s
 	}
 
 	connectionContext := context.Background()

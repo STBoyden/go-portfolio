@@ -16,21 +16,22 @@ import (
 func main() {
 	env, _ := gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
 
-	var dbUrl string
-	if s, ok := env["DB_URL"]; !ok {
+	var dbURL string
+	var ok bool
+	if dbURL, ok = env["DB_URL"]; !ok {
 		panic("DB_URL environment variable not defined")
-	} else {
-		dbUrl = strings.Trim(s, "\"")
 	}
 
+	dbURL = strings.Trim(dbURL, "\"")
+
 	p := &migratePgx.Postgres{}
-	driver := utils.Must(p.Open(dbUrl))
+	driver := utils.Must(p.Open(dbURL))
 	migrations := utils.Must(migrate.NewWithDatabaseInstance("file://./migrations/", "pgx", driver))
 
 	err := migrations.Up()
 	if err != nil && !strings.Contains(err.Error(), "no change") {
 		panic(fmt.Sprintf("migrations didn't run successfully: %v", err))
-	} else {
-		fmt.Println("migrations ran successfully or no change")
 	}
+
+	fmt.Println("migrations ran successfully or no change")
 }

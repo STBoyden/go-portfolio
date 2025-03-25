@@ -2,12 +2,28 @@ package middleware
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+type level interface{ levelMarker() }
+
+type debug struct{ level }
+type info struct{ level }
+type warn struct{ level }
+type _error struct{ level }
+
+//nolint:gochecknoglobals // These are logging levels and should be global.
+var (
+	Debug = debug{}
+	Info  = info{}
+	Warn  = warn{}
+	Error = _error{}
 )
 
 // LoggingMiddleware is an extension over [http.ResponseWriter] to standardise
@@ -65,13 +81,13 @@ func (l *LoggingMiddleware) WriteHeader(statusCode int) {
 	l.wroteHeader = true
 }
 
-func (l *LoggingMiddleware) Log(prefix, format string, v ...any) {
+func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
 	f := "request_id=%v method=%s status=%s path=%s elapsed=%v"
 	if format != "" {
 		f = fmt.Sprintf("%s\n\t[%s] msg=%s", f, prefix, format)
 	}
 
-	status := fmt.Sprintf("%d", l.status)
+	status := strconv.Itoa(l.status)
 	if l.status == 0 {
 		status = "pending"
 	}
@@ -85,7 +101,22 @@ func (l *LoggingMiddleware) Log(prefix, format string, v ...any) {
 	}
 	args = slices.Concat(args, v)
 
-	log.Printf(f, args...)
+	var logFunc func(string, ...any)
+
+	switch level.(type) {
+	case debug:
+		logFunc = slog.Debug
+	case info:
+		logFunc = slog.Info
+	case warn:
+		logFunc = slog.Warn
+	case error:
+		logFunc = slog.Error
+	default:
+		logFunc = slog.Info
+	}
+
+	logFunc(fmt.Sprintf(f, args...))
 }
 
 func loggerWrapper(next http.Handler) http.Handler {
@@ -93,9 +124,8 @@ func loggerWrapper(next http.Handler) http.Handler {
 		var wrapped *LoggingMiddleware
 		defer func() {
 			if err := recover(); err != nil {
-				wrapped.Log("http", "before error: %v", wrapped.wroteHeader)
 				wrapped.WriteHeader(http.StatusInternalServerError)
-				wrapped.Log("http", "an internal server error occurred. cause: %v", err)
+				wrapped.Log(Error, "http", "an internal server error occurred. cause: %v", err)
 			}
 		}()
 
@@ -104,6 +134,6 @@ func loggerWrapper(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r)
 		wrapped.WritePreparedHeader()
 
-		wrapped.Log("http", "finished handling request")
+		wrapped.Log(Info, "http", "finished handling request")
 	})
 }

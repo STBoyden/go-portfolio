@@ -12,8 +12,8 @@ templ Repositories(repos []types.Repository) {
 		for _, repo := range repos {
 			<div
 				class="card w-full bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
-				onclick={ templ.JSFuncCall("goToRepo", repo.Url) }
-				title={ repo.Url }
+				onclick={ templ.JSFuncCall("goToRepo", repo.URL) }
+				title={ repo.URL }
 			>
 				<div class="card-body">
 					<h2 class="card-title">{ repo.Owner + "/"+ repo.Name }</h2>

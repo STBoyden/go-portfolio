@@ -9,6 +9,6 @@ type Repository struct {
 	Name        string
 	Owner       string
 	Description string
-	Url         string
+	URL         string
 	Languages   []Language
 }

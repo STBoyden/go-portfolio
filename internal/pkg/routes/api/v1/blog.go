@@ -71,7 +71,7 @@ func blogAdmin() *http.ServeMux {
 	return r
 }
 
-func BlogApi() *http.ServeMux {
+func BlogAPI() *http.ServeMux {
 	r := http.NewServeMux()
 
 	r.HandleFunc("GET /posts", func(w http.ResponseWriter, r *http.Request) {
