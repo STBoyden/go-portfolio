@@ -37,7 +37,7 @@ The tools used are:
 ## Running locally
 
 If you would like to run a local copy, I recommend two commands that will make
-your life easier. Both are *technically* optional, but I will strongly recommend
+your life easier. Both are _technically_ optional, but I will strongly recommend
 them nonetheless.
 
 1. `just` from [casey/just](https://github.com/casey/just) - Just is a task
@@ -55,51 +55,58 @@ them nonetheless.
 
 0. **(Optional)** Create the PostgresQL instance from the `docker-compose.yml` file:
 
-    ```bash
-    docker compose up -d
-    ```
+   ```bash
+   docker compose up -d
+   ```
 
 1. Create a .env file with the following content:
 
-    ```bash
-    GITHUB_TOKEN=ghp_xxxxxxx # your GitHub PAT
-    
-    # the connection string to the database instance, see docker-compose.yml for the default connection string 
-    DB_URL=xxxxx 
-    ```
+   ```bash
+   # your GitHub PAT
+   GITHUB_TOKEN=ghp_xxxxxxx
+
+   # the connection string to the database instance, see docker-compose.yml for the default connection string
+   DB_URL=xxxxxxx
+
+   # the admin username
+   ADMIN_USER=xxxxxxx
+
+   # md5 hash of the admin password
+   ADMIN_PW=xxxxxxx
+   ```
 
 2. Run migrations on the database instance to get it to the correct state and
    generate types based on the updated schema:
-  
-    ```bash
-    # this will run migrations first *then* generate the correct types
-    just generate_db_types 
-    ```
+
+   ```bash
+   # this will run migrations first *then* generate the correct types
+   just generate_db_types
+   ```
 
 3. Build & run the project:
 
-    ```bash
-    just build
-    just run
-    ```
+   ```bash
+   just build
+   just run
+   ```
 
- > [!NOTE]
- >
- > Assuming no errors have been output, then the local instance will be
- > available at <http://localhost:8080>.
+> [!NOTE]
+>
+> Assuming no errors have been output, then the local instance will be
+> available at <http://localhost:8080>.
 
 4. **(Optional)** If you want to have the site live-update with changes:
 
-    ```bash
-    just dev
-    ```
+   ```bash
+   just dev
+   ```
 
- > [!NOTE]
- >
- > As above, your instance will be hosted at <http://localhost:8080>, but
- > after any changes you will have to manually refresh the page (with
- > <kbd>F5</kbd>) as I have not set up the project to work properly with
- > hot-reloading.
+> [!NOTE]
+>
+> As above, your instance will be hosted at <http://localhost:8080>, but
+> after any changes you will have to manually refresh the page (with
+> <kbd>F5</kbd>) as I have not set up the project to work properly with
+> hot-reloading.
 
 ## Deployment
 
@@ -109,6 +116,8 @@ supports that functionality, however I chose fly.io for simplicity. The
 container specification can be found in `Dockerfile`.
 
 ## Project structure
+
+Last updated: commit 0e4e17a
 
 The structure of the project is similar to that of most standard Golang
 applications, with some changes to accomodate the needs of the project.
