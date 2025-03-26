@@ -45,6 +45,7 @@ type LoggingMiddleware struct {
 	requestID         uuid.UUID
 	status            int
 	wroteHeader       bool
+	headerPrepared    bool
 }
 
 var _ middleware = (*LoggingMiddleware)(nil)
@@ -66,6 +67,12 @@ func (l *LoggingMiddleware) PrepareHeader(statusCode int) {
 	}
 
 	l.status = statusCode
+	l.headerPrepared = true
+}
+
+// HeaderPrepared returns whether or not the header has been prepared.
+func (l *LoggingMiddleware) HeaderPrepared() bool {
+	return l.headerPrepared
 }
 
 // WritePreparedHeader writes the previously prepared w.status to the status
@@ -140,6 +147,10 @@ func loggerWrapper(next http.Handler) http.Handler {
 		start := time.Now()
 		wrapped = loggingWrapResponseWriter(w, r, start)
 		next.ServeHTTP(wrapped, r)
+
+		if !wrapped.HeaderPrepared() {
+			wrapped.PrepareHeader(http.StatusOK)
+		}
 		wrapped.WritePreparedHeader()
 
 		wrapped.Log(Info, "http", "finished handling request")
