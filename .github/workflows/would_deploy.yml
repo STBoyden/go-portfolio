@@ -1,0 +1,30 @@
+name: would_deploy
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  would_deploy:
+    name: test ability to deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: install system dependencies & pnpm install
+        run: |
+          apt-get update && apt-get install nodejs npm -y
+          npm install -g pnpm
+          pnpm install
+
+      - name: install go dependencies
+        run: node_modules/.bin/just install_deps
+
+      - name: build
+        run: node_modules/.bin/just cd_build
