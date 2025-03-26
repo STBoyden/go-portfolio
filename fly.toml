@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for go-portfolio on 2025-03-19T14:35:10Z
+# fly.toml app configuration file generated for go-portfolio on 2025-03-26T13:26:47Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -8,18 +8,16 @@ primary_region = 'lhr'
 
 [build]
 
-[env]
-PORT = '8080'
-
 [http_service]
-internal_port = 8080
-force_https = true
-auto_stop_machines = 'stop'
-auto_start_machines = true
-min_machines_running = 0
-processes = ['app']
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-memory = '512m'
-cpu_kind = 'shared'
-cpus = 1
+  memory = '512m'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
