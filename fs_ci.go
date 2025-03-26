@@ -2,9 +2,7 @@
 
 package fs
 
-import (
-	stdFS "io/fs"
-)
+import "github.com/halimath/fsmock"
 
 //nolint:gochecknoglobals // This is a stub for CI purposes.
-var EnvFile = stdFS.FS(nil)
+var EnvFile = fsmock.New(fsmock.NewDir("", fsmock.EmptyFile(".env")))

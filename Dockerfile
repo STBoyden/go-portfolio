@@ -9,7 +9,7 @@ RUN pnpm install
 COPY go.mod go.sum justfile ./
 RUN node_modules/.bin/just install_deps
 COPY . .
-RUN node_modules/.bin/just build
+RUN node_modules/.bin/just cd_build
 
 FROM debian:bookworm
 

@@ -8,7 +8,7 @@ generate:
     node_modules/.bin/tailwindcss -i ./static/css/_styles.css -o ./static/css/styles.css
 
 run_migrations:
-    go run ./cmd/migrations/main.go
+    go run ./cmd/migrations
 
 generate_db_types: run_migrations
     go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
@@ -16,6 +16,9 @@ generate_db_types: run_migrations
 ci_prepare:
     go generate ./internal/pkg/routes/site
     go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
+
+cd_prepare: ci_prepare
+    node_modules/.bin/tailwindcss -i ./static/css/_styles.css -o ./static/css/styles.css
 
 build_docs: generate generate_db_types
 
@@ -27,7 +30,10 @@ docs:
 
 build: generate
     mkdir -p build
-    go build -o build/portfolio cmd/main/main.go
+    go build -o build/portfolio ./cmd/main
+
+cd_build: cd_prepare
+    go build -tags=ci -o build/portfolio ./cmd/main
 
 lint: build
     go tool -modfile=golangci-lint.mod github.com/golangci/golangci-lint/cmd/golangci-lint run
