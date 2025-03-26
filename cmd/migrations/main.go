@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	fs "github.com/STBoyden/go-portfolio"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/gotenv/v2"
 	"github.com/golang-migrate/migrate/v4"
 	migratePgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+
+	fs "github.com/STBoyden/go-portfolio"
+	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 )
 
 func main() {

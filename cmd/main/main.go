@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/STBoyden/gotenv/v2"
+
 	fs "github.com/STBoyden/go-portfolio"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes"
-	"github.com/STBoyden/gotenv/v2"
 )
 
 const (

@@ -6,12 +6,13 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
-	"github.com/google/uuid"
 )
 
 func blogAdmin() *http.ServeMux {

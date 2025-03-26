@@ -13,10 +13,12 @@ import (
 
 type level interface{ loggerLevelMarker() }
 
-type debug struct{ level }
-type info struct{ level }
-type warn struct{ level }
-type _error struct{ level }
+type (
+	debug  struct{ level }
+	info   struct{ level }
+	warn   struct{ level }
+	_error struct{ level }
+)
 
 // Global logging levels for the Logging middleware.
 //

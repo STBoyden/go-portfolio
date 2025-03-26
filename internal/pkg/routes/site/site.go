@@ -4,8 +4,9 @@ package site
 import (
 	"net/http"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
 	"github.com/a-h/templ"
+
+	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
 )
 
 func Router() *http.ServeMux {

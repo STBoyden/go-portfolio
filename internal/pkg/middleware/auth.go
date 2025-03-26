@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
-	"github.com/google/uuid"
 )
 
 // AuthMiddleware is an extension over [LoggingMiddleware] (and by extension

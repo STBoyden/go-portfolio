@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
-	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
 	gh "github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
+
+	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
+	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
 )
 
 type language struct {
