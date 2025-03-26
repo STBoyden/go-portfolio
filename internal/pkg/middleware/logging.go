@@ -61,6 +61,10 @@ func (l *LoggingMiddleware) Status() int {
 // PrepareHeader sets the status code of the request without calling
 // [LoggingMiddleware.WriteHeader].
 func (l *LoggingMiddleware) PrepareHeader(statusCode int) {
+	if statusCode == 0 {
+		return
+	}
+
 	l.status = statusCode
 }
 
@@ -76,7 +80,7 @@ func (l *LoggingMiddleware) WritePreparedHeader() {
 // Subsequent calls to [LoggingMiddleware.WritePreparedHeader] or
 // [LoggingMiddleware.WriteHeader] are superflous and will be ignored.
 func (l *LoggingMiddleware) WriteHeader(statusCode int) {
-	if l.wroteHeader {
+	if l.wroteHeader || statusCode == 0 {
 		return
 	}
 
