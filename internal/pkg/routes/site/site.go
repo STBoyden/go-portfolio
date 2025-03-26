@@ -14,7 +14,7 @@ func Router() *http.ServeMux {
 
 	router.Handle("GET /{$}", templ.Handler(views.Root(views.Index())))
 	router.Handle("GET /about", templ.Handler(views.Root(views.About())))
-	router.Handle("GET /blog", templ.Handler(views.Root(views.Blog())))
+	// router.Handle("GET /blog", templ.Handler(views.Root(views.Blog())))
 
 	router.HandleFunc("GET /page/index", func(w http.ResponseWriter, r *http.Request) {
 		_ = views.Index().Render(r.Context(), w)
@@ -24,9 +24,9 @@ func Router() *http.ServeMux {
 		_ = views.About().Render(r.Context(), w)
 	})
 
-	router.HandleFunc("GET /page/blog", func(w http.ResponseWriter, r *http.Request) {
-		_ = views.Blog().Render(r.Context(), w)
-	})
+	// router.HandleFunc("GET /page/blog", func(w http.ResponseWriter, r *http.Request) {
+	// 	_ = views.Blog().Render(r.Context(), w)
+	// })
 
 	return router
 }
