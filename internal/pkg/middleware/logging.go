@@ -87,7 +87,7 @@ func (l *LoggingMiddleware) WritePreparedHeader() {
 // Subsequent calls to [LoggingMiddleware.WritePreparedHeader] or
 // [LoggingMiddleware.WriteHeader] are superflous and will be ignored.
 func (l *LoggingMiddleware) WriteHeader(statusCode int) {
-	if l.wroteHeader || statusCode == 0 {
+	if l.wroteHeader || statusCode == 0 || l.status == statusCode {
 		return
 	}
 

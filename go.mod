@@ -7,6 +7,7 @@ require (
 	github.com/a-h/templ v0.3.833
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
+	github.com/halimath/fsmock v0.0.0-20221112192818-cff727715cba
 	github.com/jackc/pgx/v5 v5.7.3
 	github.com/lib/pq v1.10.9
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
@@ -42,7 +43,6 @@ require (
 	github.com/google/licensecheck v0.3.1 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/google/safehtml v0.0.3-0.20211026203422-d6f0e11a5516 // indirect
-	github.com/halimath/fsmock v0.0.0-20221112192818-cff727715cba // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

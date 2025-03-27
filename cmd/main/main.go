@@ -10,7 +10,6 @@ import (
 
 	fs "github.com/STBoyden/go-portfolio"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
-	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes"
 )
 
@@ -28,7 +27,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Forward all endpoints to routes.Router()
-	mux.Handle("/", middleware.Handlers.Logger(routes.Router(fs.StaticFS)))
+	mux.Handle("/", routes.Router(fs.StaticFS))
 
 	log.Println("Serving http://localhost:8080...")
 

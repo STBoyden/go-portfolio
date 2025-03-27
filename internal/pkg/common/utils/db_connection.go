@@ -2,19 +2,9 @@ package utils
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/jackc/pgx/v5"
 )
-
-func must[T any](value T, err error) T {
-	if err != nil {
-		panic(fmt.Sprintf("error: %v", err))
-	}
-
-	return value
-}
 
 type DB struct {
 	*pgx.Conn
@@ -29,15 +19,10 @@ func ConnectDB() {
 		return
 	}
 
-	var url string
-	var ok bool
-	if url, ok = os.LookupEnv("DB_URL"); !ok {
-		panic("DB_URL environment variable not set")
-	}
-
+	url := MustEnv("DB_URL")
 	connectionContext := context.Background()
 
-	db := must(pgx.Connect(connectionContext, url))
+	db := Must(pgx.Connect(connectionContext, url))
 
 	Database = &DB{Conn: db, Context: connectionContext}
 }

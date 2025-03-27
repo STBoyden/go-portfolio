@@ -8,11 +8,11 @@ bin = "./build/portfolio"
 cmd = "just generate_db_types && just build"
 delay = 1000
 exclude_dir = [
-  "assets",
-  "tmp",
-  "vendor",
-  "testdata",
-  "internal/pkg/persistence",
+    "assets",
+    "tmp",
+    "vendor",
+    "testdata",
+    "internal/pkg/persistence",
 ]
 exclude_file = []
 exclude_regex = ["_test.go", "_templ.go"]
@@ -21,10 +21,11 @@ follow_symlink = false
 full_bin = ""
 include_ext = ["go", "tpl", "tmpl", "html", "templ", "sql"]
 include_file = [
-  "package.json",
-  "pnpm-lock.yaml",
-  "static/css/_styles.css",
-  ".env",
+    "package.json",
+    "pnpm-lock.yaml",
+    "static/css/_styles.css",
+    ".env",
+    "sqlc.yml",
 ]
 kill_delay = "0s"
 log = "build-errors.log"
