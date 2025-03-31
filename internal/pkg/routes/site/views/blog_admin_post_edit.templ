@@ -1,0 +1,75 @@
+package views
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+	"github.com/google/uuid"
+	"time"
+)
+
+var (
+	errIdWasNull             = errors.New("Given ID was null, assuming that we're creating a new post")
+	errDatabaseQueryTimedOut = errors.New("Database query timed out")
+)
+
+type response struct {
+	post *persistence.Post
+	err  error
+}
+
+func getPostDataById(id *uuid.UUID) <-chan response {
+	responsech := make(chan response, 1024)
+
+	if id == nil {
+		defer close(responsech)
+		responsech <- response{post: nil, err: errIdWasNull}
+		return responsech
+	}
+
+	go func() {
+		inner := make(chan response, 1024)
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+
+		go func() {
+			defer close(inner)
+
+			queries := persistence.New(utils.Database)
+			post, err := queries.GetPostByID(ctx, *id)
+			p := &post
+			if err != nil {
+				p = nil
+			}
+
+			inner <- response{post: p, err: err}
+		}()
+
+		defer close(responsech)
+		for {
+			select {
+			case response := <-inner:
+				responsech <- response
+				return
+			case <-ctx.Done():
+				responsech <- response{post: nil, err: errDatabaseQueryTimedOut}
+				return
+			}
+		}
+
+	}()
+
+	return responsech
+}
+
+templ BlogAdminPostEdit(id *uuid.UUID) {
+	for response := range getPostDataById(id) {
+		@templ.Flush() {
+			if response.err != nil && !errors.Is(response.err, errIdWasNull) {
+				@templ.JSFuncCall("console.log", fmt.Sprintf("an error occurred: %v", response.err))
+			}
+		}
+	}
+}

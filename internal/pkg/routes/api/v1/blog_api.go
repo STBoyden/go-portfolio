@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
@@ -103,7 +104,7 @@ func blogAdmin() *http.ServeMux {
 			return
 		}
 
-		_ = components.PostList(posts, true).Render(r.Context(), w)
+		templ.Handler(components.PostList(posts, true), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	return mux
@@ -193,7 +194,7 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Sprintf("unable to create a new token: %v", err))
 	}
 
-	w.Header().Add("HX-Trigger", "login-page-reload")
+	w.Header().Add("Hx-Trigger", "login-page-reload")
 	http.SetCookie(w, &http.Cookie{
 		Name:     consts.TokenCookieName,
 		Value:    auth.ID.String(),
@@ -221,7 +222,7 @@ func BlogAPI() *http.ServeMux {
 			return
 		}
 
-		_ = components.PostList(posts, false).Render(r.Context(), w)
+		templ.Handler(components.PostList(posts, false), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	mux.Handle("/admin/", middleware.Handlers.Authorisation(http.StripPrefix("/admin", blogAdmin())))

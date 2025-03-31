@@ -1,0 +1,26 @@
+package views
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+
+script showExpirationAlert(c bool) {
+	if (c) {
+	   alert("Your session is about to expire")
+	}
+}
+
+templ BlogAdminAuthed(showExpirationWarning bool) {
+	<div
+		onload={ showExpirationAlert(showExpirationWarning) }
+		class="mt-8 w-full h-full flex flex-col place-items-center px-8 md:px-12 lg:px16"
+	>
+		@components.Title("Posts")
+		<div class="mt-5">
+			<div
+				hx-get="/api/v1/blog/admin/posts"
+				hx-params="*"
+				hx-trigger="load"
+				hx-swap="outerHTML"
+			></div>
+		</div>
+	</div>
+}

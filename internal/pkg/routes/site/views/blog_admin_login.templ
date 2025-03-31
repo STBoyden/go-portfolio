@@ -1,0 +1,79 @@
+package views
+
+templ BlogAdminLogin() {
+	<script>
+		let headers = {};
+	    document.addEventListener('alpine:init', () => {
+	        Alpine.data('login', () => ({
+                user: '',
+                pass: '',
+                setHeaders() {
+                  headers = {"Authorization": `Basic ${btoa(this.user + ':' + this.pass)}`}
+                }
+	        }))
+	    })
+	</script>
+	//
+	<div
+		hx-get=""
+		hx-target="body"
+		hx-swap="innerHTML"
+		hx-trigger="login-page-reload from:body"
+	></div>
+	<div x-data="login">
+		<form
+			class="max-w-md mx-auto p-6 rounded shadow-md bg-base-300"
+			hx-post="/api/v1/blog/authenticate"
+			hx-swap="none"
+			x-ref="login_form"
+		>
+			<div class="mb-4">
+				<label class="block text-base-content text-sm font-bold mb-2" for="username">
+					Username
+				</label>
+				<input
+					class="shadow appearance-none border rounded w-full py-2 px-3 text-base-content leading-tight focus:outline-none focus:shadow-outline"
+					id="username"
+					type="text"
+					x-model="user"
+					@keyup="setHeaders();$refs.login_form.setAttribute('hx-headers', JSON.stringify(headers))"
+					placeholder="Enter your username"
+				/>
+			</div>
+			<div class="mb-6">
+				<label class="block text-base-content text-sm font-bold mb-2" for="password">
+					Password
+				</label>
+				<input
+					class="shadow appearance-none border rounded w-full py-2 px-3 text-base-content leading-tight focus:outline-none focus:shadow-outline"
+					id="password"
+					type="password"
+					x-model="pass"
+					@keyup="setHeaders();$refs.login_form.setAttribute('hx-headers', JSON.stringify(headers))"
+					placeholder="Enter your password"
+				/>
+			</div>
+			<div class="mb-6 hidden">
+				<label
+					class="block text-base-content text-sm font-bold mb-2"
+					for="action"
+				>
+					Spam Filter
+				</label>
+				<input
+					class="shadow appearance-none border rounded w-full py-2 px-3 text-base-content leading-tight focus:outline-none focus:shadow-outline"
+					id="action"
+					type="text"
+				/>
+			</div>
+			<div class="flex items-center justify-between">
+				<button
+					class="bg-primary hover:bg-primary/85 text-primary-content font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+					type="submit"
+				>
+					Login
+				</button>
+			</div>
+		</form>
+	</div>
+}
