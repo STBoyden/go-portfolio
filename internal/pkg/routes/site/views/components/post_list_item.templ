@@ -1,13 +1,28 @@
 package components
 
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 
-templ PostList(posts []persistence.Post) {
-	if len(posts) == 0 {
+templ PostList(posts []persistence.Post, showEdit bool) {
+	if !showEdit && len(posts) == 0 {
 		<div>
 			No blog posts (yet...)
 		</div>
 	} else {
-		<div></div>
+		<div class="flex flex-row gap-2">
+			for post := range utils.StreamArray(posts) {
+				@templ.Flush() {
+					<span>{ post.Content.Title }</span>
+				}
+			}
+			<button
+				class="btn btn-md btn-info text-info-content"
+				hx-target="#body"
+				hx-get="/blog/admin/new-post"
+				hx-swap="innerHTML"
+			>
+				New post
+			</button>
+		</div>
 	}
 }

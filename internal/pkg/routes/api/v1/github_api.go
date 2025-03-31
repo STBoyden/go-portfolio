@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/a-h/templ"
 	gh "github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 
@@ -54,7 +55,7 @@ type pinnedItemsQuery struct {
 }
 
 func GithubAPI() *http.ServeMux {
-	r := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	if !ok {
@@ -65,7 +66,7 @@ func GithubAPI() *http.ServeMux {
 	c := oauth2.NewClient(context.Background(), src)
 	client := gh.NewClient(c)
 
-	r.HandleFunc("/projects", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/projects", func(w http.ResponseWriter, r *http.Request) {
 		input := gh.LanguageOrder{
 			Field:     gh.LanguageOrderFieldSize,
 			Direction: gh.OrderDirectionDesc,
@@ -108,8 +109,8 @@ func GithubAPI() *http.ServeMux {
 			repositories[i] = repository
 		}
 
-		_ = components.Repositories(repositories).Render(r.Context(), w)
+		templ.Handler(components.Repositories(repositories), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
-	return r
+	return mux
 }
