@@ -16,6 +16,8 @@ import (
 //
 // For AuthMiddleware to work, a parent [http.Handler] must have been wrapped by
 // the Logger wrapper method as it is required for this middleware.
+//
+//nolint:recvcheck // The Authed, Details and Log methods do not need to have pointer receivers as they should not have the ability to modify the struct.
 type AuthMiddleware struct {
 	*LoggingMiddleware
 
@@ -39,7 +41,7 @@ func (a AuthMiddleware) Authed() bool {
 }
 
 // Wrapper over [LoggingMiddleware.Log] to standardise the prefix.
-func (a *AuthMiddleware) Log(level level, format string, v ...any) {
+func (a AuthMiddleware) Log(level level, format string, v ...any) {
 	a.LoggingMiddleware.Log(level, "auth", format, v...)
 }
 
