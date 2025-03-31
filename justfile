@@ -1,9 +1,12 @@
 install_deps:
     pnpm install
+    mkdir -p static/js
+    cp node_modules/htmx.org/dist/htmx.min.js static/js
+    cp node_modules/alpinejs/dist/cdn.min.js static/js/alpinejs.min.js
     go mod download
     go mod verify
 
-generate:
+generate: install_deps
     go generate ./internal/pkg/routes/site
     node_modules/.bin/tailwindcss -i ./static/css/_styles.css -o ./static/css/styles.css
 

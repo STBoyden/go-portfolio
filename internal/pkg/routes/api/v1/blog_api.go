@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
@@ -19,19 +20,29 @@ import (
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
 )
 
-func blogAdmin() *http.ServeMux {
-	r := http.NewServeMux()
+//nolint:gochecknoglobals // These are only accessible in the v1 package, and are not globally accessible by other packages.
+var (
+	adminUsername string
+	adminPassword string
+)
 
-	r.HandleFunc("POST /new-post/{slug}", func(_w http.ResponseWriter, r *http.Request) {
+const blogAuthLogTag string = "blog-auth"
+
+func blogAdmin() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /new-post/{slug}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to create a new post")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
 		reader, err := r.GetBody()
 		if err != nil {
+			w.Log(middleware.Info, "given request has no body. body len <= 0")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -39,12 +50,14 @@ func blogAdmin() *http.ServeMux {
 
 		buffer, err := io.ReadAll(reader)
 		if err != nil {
+			w.Log(middleware.Info, "body was malformed and could not be read properly")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
 
 		slug := r.PathValue("slug")
 		if slug == "" {
+			w.Log(middleware.Info, "slug was not present in path")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -52,6 +65,7 @@ func blogAdmin() *http.ServeMux {
 		blogContent := types.BlogContent{}
 		err = json.Unmarshal(buffer, &blogContent)
 		if err != nil {
+			w.Log(middleware.Info, "body was not in the correct format and could not be parsed: %v", err)
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -73,119 +87,155 @@ func blogAdmin() *http.ServeMux {
 		}
 	})
 
-	return r
+	mux.HandleFunc("GET /posts", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.AuthMiddleware](_w)
+
+		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to get unpublished posts")
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
+		}
+
+		queries := persistence.New(utils.Database)
+		posts, err := queries.GetAllPosts(r.Context())
+		if err != nil {
+			_ = components.Error().Render(r.Context(), w)
+			return
+		}
+
+		_ = components.PostList(posts, true).Render(r.Context(), w)
+	})
+
+	return mux
+}
+
+// checkAuthentication checks the authentication of the request and responds
+// with whether the request has valid authentication.
+func checkAuthentication(_w http.ResponseWriter, r *http.Request) {
+	w := utils.MustCast[middleware.LoggingMiddleware](_w)
+
+	cookie, err := r.Cookie(consts.TokenCookieName)
+	if err != nil {
+		w.Log(middleware.Info, blogAuthLogTag, "token cookie was missing from client request")
+		w.PrepareHeader(http.StatusUnauthorized)
+		return
+	}
+
+	token, err := uuid.Parse(cookie.Value)
+	if err != nil {
+		w.Log(middleware.Info, blogAuthLogTag, "token form cookie was invalid")
+		w.PrepareHeader(http.StatusUnauthorized)
+		return
+	}
+
+	queries := persistence.New(utils.Database)
+	authorisation, err := queries.GetAuthByToken(r.Context(), token)
+	if err != nil {
+		w.Log(middleware.Warn, blogAuthLogTag, "internal error occurred: de-authing user just in case: could not get authorisation token: %v", err)
+		w.PrepareHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if authorisation.Expiry.Before(time.Now()) {
+		w.Log(middleware.Info, blogAuthLogTag, "token associated with request has expired")
+		w.PrepareHeader(http.StatusUnauthorized)
+		return
+	} else if authorisation.Expiry.Before(time.Now().Add(30 * time.Minute)) {
+		// if the token is within 30 minutes of expiration, return a 202
+		// status code so that the front-end may warn the user.
+		w.PrepareHeader(http.StatusAccepted)
+	}
+}
+
+// authenticate creates a new authentication for a user if they have provided
+// the correct login details and returns a cookie with a auth token.
+func authenticate(_w http.ResponseWriter, r *http.Request) {
+	w := utils.MustCast[middleware.LoggingMiddleware](_w)
+
+	onError := func(statusCode int) {
+		w.PrepareHeader(statusCode)
+		_ = components.Error().Render(r.Context(), w)
+	}
+
+	headerContent, ok := r.Header["Authorization"]
+	if !ok {
+		w.Log(middleware.Info, blogAuthLogTag, "authorization header missing")
+		onError(http.StatusBadRequest)
+		return
+	}
+
+	authorisation := strings.Join(headerContent, " ")
+	if authorisation == "" {
+		w.Log(middleware.Info, blogAuthLogTag, "authorization header content is empty")
+		onError(http.StatusBadRequest)
+		return
+	}
+
+	username, password, ok := r.BasicAuth()
+	if username == "" || password == "" || !ok {
+		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password are empty")
+		onError(http.StatusBadRequest)
+		return
+	}
+
+	h := sha512.Sum512([]byte(password))
+	passwordHashed := hex.EncodeToString(h[:])
+
+	if username != adminUsername || passwordHashed != adminPassword {
+		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password hash does not match administrator details")
+		onError(http.StatusUnauthorized)
+		return
+	}
+
+	queries := persistence.New(utils.Database)
+	auth, err := queries.NewAuth(r.Context())
+	if err != nil {
+		panic(fmt.Sprintf("unable to create a new token: %v", err))
+	}
+
+	w.Header().Add("HX-Trigger", "login-page-reload")
+	http.SetCookie(w, &http.Cookie{
+		Name:     consts.TokenCookieName,
+		Value:    auth.ID.String(),
+		Expires:  auth.Expiry,
+		Path:     "/",
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.Log(middleware.Info, blogAuthLogTag, "setting cookie %s", consts.TokenCookieName)
 }
 
 func BlogAPI() *http.ServeMux {
-	adminUser := utils.MustEnv("ADMIN_USER")
-	adminPass := utils.MustEnv("ADMIN_PW")
+	adminUsername = utils.MustEnv("ADMIN_USER")
+	adminPassword = utils.MustEnv("ADMIN_PW")
 
-	r := http.NewServeMux()
+	mux := http.NewServeMux()
 
-	r.HandleFunc("GET /posts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /posts", func(w http.ResponseWriter, r *http.Request) {
 		queries := persistence.New(utils.Database)
-		posts, err := queries.GetPosts(r.Context())
+		posts, err := queries.GetPublishedPosts(r.Context())
 		if err != nil {
 			_ = components.Error().Render(r.Context(), w)
 			return
 		}
 
-		_ = components.PostList(posts).Render(r.Context(), w)
+		_ = components.PostList(posts, false).Render(r.Context(), w)
 	})
+
+	mux.Handle("/admin/", middleware.Handlers.Authorisation(http.StripPrefix("/admin", blogAdmin())))
 
 	// responds with a status code relevant to the authentication status of the user.
-	// 200: the user is authenticated and cookie is outside of a 30 minute expiration warning.
-	// 202: the user is authenticated and cookie is within a 30 minute expiration warning.
+	// 200: the user is authenticated and cookie is outside of a 30 minute
+	// 		expiration warning.
+	// 202: the user is authenticated and cookie is within a 30 minute
+	// 		expiration warning.
 	// 401: the user is not authenticated.
-	r.HandleFunc("POST /check-authentication", func(_w http.ResponseWriter, r *http.Request) {
-		w := utils.MustCast[middleware.LoggingMiddleware](_w)
+	mux.HandleFunc("POST /check-authentication", checkAuthentication)
 
-		cookie, err := r.Cookie("token")
-		if err != nil {
-			w.PrepareHeader(http.StatusUnauthorized)
-			return
-		}
+	// authenticates a user to be able to use the /admin/ endpoints and redirects to the page
+	mux.HandleFunc("POST /authenticate", authenticate)
 
-		if cookie.Expires.Before(time.Now()) {
-			w.PrepareHeader(http.StatusUnauthorized)
-			return
-		} else if cookie.Expires.Before(time.Now().Add(30 * time.Minute)) {
-			// if the cookie is about to expire, warn the user that they will
-			// need to re-authenticate soon. use a 202 status code to indicate
-			// this to the front-end.
-			w.PrepareHeader(http.StatusAccepted)
-		}
-
-		token, err := uuid.Parse(cookie.Value)
-		if err != nil {
-			w.PrepareHeader(http.StatusUnauthorized)
-			return
-		}
-
-		queries := persistence.New(utils.Database)
-		exists, err := queries.CheckAuthExists(r.Context(), token)
-		if !exists || err != nil {
-			w.PrepareHeader(http.StatusUnauthorized)
-			return
-		}
-
-		expired, err := queries.CheckIfAuthExpired(r.Context(), token)
-		if expired || err != nil {
-			w.PrepareHeader(http.StatusUnauthorized)
-			return
-		}
-	})
-
-	r.HandleFunc("POST /authenticate", func(_w http.ResponseWriter, r *http.Request) {
-		w := utils.MustCast[middleware.LoggingMiddleware](_w)
-
-		onError := func(statusCode int) {
-			w.PrepareHeader(statusCode)
-			_ = components.Error().Render(r.Context(), w)
-		}
-
-		headerContent, ok := r.Header["Authorization"]
-		if !ok {
-			onError(http.StatusBadRequest)
-			return
-		}
-
-		authorisation := strings.Join(headerContent, " ")
-		if authorisation == "" {
-			onError(http.StatusBadRequest)
-			return
-		}
-
-		username, password, ok := r.BasicAuth()
-		if username == "" || password == "" || !ok {
-			onError(http.StatusBadRequest)
-			return
-		}
-
-		h := sha512.Sum512([]byte(password))
-		passwordHashed := hex.EncodeToString(h[:])
-
-		if username != adminUser || passwordHashed != adminPass {
-			onError(http.StatusUnauthorized)
-			return
-		}
-
-		queries := persistence.New(utils.Database)
-		auth, err := queries.NewAuth(r.Context())
-		if err != nil {
-			panic(fmt.Sprintf("unable to create a new token: %v", err))
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:    "token",
-			Value:   auth.ID.String(),
-			Expires: auth.Expiry,
-		})
-
-		w.PrepareHeader(http.StatusOK)
-	})
-
-	r.Handle("/admin/", middleware.Handlers.Authorisation(http.StripPrefix("/admin", blogAdmin())))
-
-	return r
+	return mux
 }
