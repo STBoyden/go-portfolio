@@ -1,4 +1,7 @@
 package components
 
-templ Error() {
+import "fmt"
+
+templ Error(err error) {
+	<div class="bg-warning text-warning-content">{ fmt.Sprintf("An error occurred: %v", err.Error()) }</div>
 }

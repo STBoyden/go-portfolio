@@ -4,8 +4,8 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -27,13 +27,31 @@ var (
 	adminPassword string
 )
 
+var (
+	errMissingAuthorization        = errors.New("authorization header is missing")
+	errInvalidAuthorizationContent = errors.New("invalid authorization content")
+	errIncorrectCredentials        = errors.New("incorrect credentials")
+)
+
 const blogAuthLogTag string = "blog-auth"
 
 func blogAdmin() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /new-post/{slug}", func(_w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /new-post", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
+
+		if err := r.ParseForm(); err != nil {
+			w.Log(middleware.Info, "form not submitted correctly: %v", err)
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
+		}
+
+		type form struct {
+			Title   string `json:"title"`
+			Slug    string `json:"slug"`
+			Content string `json:"content"`
+		}
 
 		if _, authed := w.Details(); !authed {
 			w.Log(middleware.Info, "user is not authorised to create a new post")
@@ -41,51 +59,32 @@ func blogAdmin() *http.ServeMux {
 			return
 		}
 
-		reader, err := r.GetBody()
-		if err != nil {
-			w.Log(middleware.Info, "given request has no body. body len <= 0")
-			w.PrepareHeader(http.StatusBadRequest)
-			return
-		}
-		defer reader.Close()
-
-		buffer, err := io.ReadAll(reader)
-		if err != nil {
-			w.Log(middleware.Info, "body was malformed and could not be read properly")
-			w.PrepareHeader(http.StatusBadRequest)
-			return
+		title := r.PostFormValue("title")
+		slug := r.PostFormValue("slug")
+		content := r.PostFormValue("content")
+		if title == "" || slug == "" || content == "" {
+			w.Log(middleware.Info, "form content is invalid")
 		}
 
-		slug := r.PathValue("slug")
-		if slug == "" {
-			w.Log(middleware.Info, "slug was not present in path")
-			w.PrepareHeader(http.StatusBadRequest)
-			return
+		blogContent := types.BlogContent{
+			Title: title,
+			Text:  content,
 		}
-
-		blogContent := types.BlogContent{}
-		err = json.Unmarshal(buffer, &blogContent)
+		contentBuffer, err := json.Marshal(blogContent)
 		if err != nil {
-			w.Log(middleware.Info, "body was not in the correct format and could not be parsed: %v", err)
-			w.PrepareHeader(http.StatusBadRequest)
-			return
+			panic(fmt.Sprintf("unable to marshal blog content: %v", err))
 		}
 
 		queries := persistence.New(utils.Database)
-		post, err := queries.CreatePost(r.Context(), persistence.CreatePostParams{Slug: slug, Content: buffer})
+		post, err := queries.CreatePost(r.Context(), persistence.CreatePostParams{
+			Slug:    slug,
+			Content: contentBuffer,
+		})
 		if err != nil {
 			panic(fmt.Sprintf("was unable to insert a new post: %v", err))
 		}
 
-		type response struct {
-			PostID uuid.UUID `json:"post_id"`
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(response{PostID: post.ID})
-		if err != nil {
-			panic(fmt.Sprintf("unable to create response object: %v", err))
-		}
+		http.Redirect(w, r, fmt.Sprintf("/blog/%s", post.Slug), http.StatusFound)
 	})
 
 	mux.HandleFunc("GET /posts", func(_w http.ResponseWriter, r *http.Request) {
@@ -99,12 +98,14 @@ func blogAdmin() *http.ServeMux {
 
 		queries := persistence.New(utils.Database)
 		posts, err := queries.GetAllPosts(r.Context())
+
+		component := components.PostList(posts, true)
 		if err != nil {
-			_ = components.Error().Render(r.Context(), w)
+			component = components.Error(err)
 			return
 		}
 
-		templ.Handler(components.PostList(posts, true), templ.WithStreaming()).ServeHTTP(w, r)
+		templ.Handler(component, templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	return mux
@@ -153,29 +154,29 @@ func checkAuthentication(_w http.ResponseWriter, r *http.Request) {
 func authenticate(_w http.ResponseWriter, r *http.Request) {
 	w := utils.MustCast[middleware.LoggingMiddleware](_w)
 
-	onError := func(statusCode int) {
+	onError := func(err error, statusCode int) {
 		w.PrepareHeader(statusCode)
-		_ = components.Error().Render(r.Context(), w)
+		templ.Handler(components.Error(err)).ServeHTTP(w, r)
 	}
 
 	headerContent, ok := r.Header["Authorization"]
 	if !ok {
 		w.Log(middleware.Info, blogAuthLogTag, "authorization header missing")
-		onError(http.StatusBadRequest)
+		onError(errMissingAuthorization, http.StatusBadRequest)
 		return
 	}
 
 	authorisation := strings.Join(headerContent, " ")
 	if authorisation == "" {
 		w.Log(middleware.Info, blogAuthLogTag, "authorization header content is empty")
-		onError(http.StatusBadRequest)
+		onError(errInvalidAuthorizationContent, http.StatusBadRequest)
 		return
 	}
 
 	username, password, ok := r.BasicAuth()
 	if username == "" || password == "" || !ok {
 		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password are empty")
-		onError(http.StatusBadRequest)
+		onError(errInvalidAuthorizationContent, http.StatusBadRequest)
 		return
 	}
 
@@ -184,7 +185,7 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 
 	if username != adminUsername || passwordHashed != adminPassword {
 		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password hash does not match administrator details")
-		onError(http.StatusUnauthorized)
+		onError(errIncorrectCredentials, http.StatusUnauthorized)
 		return
 	}
 
@@ -218,7 +219,7 @@ func BlogAPI() *http.ServeMux {
 		queries := persistence.New(utils.Database)
 		posts, err := queries.GetPublishedPosts(r.Context())
 		if err != nil {
-			_ = components.Error().Render(r.Context(), w)
+			templ.Handler(components.Error(err)).ServeHTTP(w, r)
 			return
 		}
 

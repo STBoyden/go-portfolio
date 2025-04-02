@@ -2,9 +2,10 @@ package v1
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/a-h/templ"
 	gh "github.com/shurcooL/githubv4"
@@ -72,13 +73,46 @@ func GithubAPI() *http.ServeMux {
 			Direction: gh.OrderDirectionDesc,
 		}
 
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		type response struct {
+			query *pinnedItemsQuery
+			err   error
+		}
+		responsech := make(chan response)
+
+		go func() {
+			defer close(responsech)
+
+			var query pinnedItemsQuery
+			err := client.Query(ctx, &query, map[string]any{
+				"languagesOrderBy": input,
+			})
+			if err != nil {
+				responsech <- response{query: nil, err: err}
+				return
+			}
+
+			responsech <- response{query: &query, err: nil}
+		}()
+
 		var query pinnedItemsQuery
-		err := client.Query(r.Context(), &query, map[string]any{
-			"languagesOrderBy": input,
-		})
-		if err != nil {
-			fmt.Printf("an error occurred: %v\n", err)
-			return
+	Wait:
+		for {
+			select {
+			case <-ctx.Done():
+				templ.Handler(components.Error(errors.New("timed out"))).ServeHTTP(w, r)
+				return
+			case response := <-responsech:
+				if response.err != nil {
+					templ.Handler(components.Error(response.err)).ServeHTTP(w, r)
+					return
+				}
+
+				query = *response.query
+				break Wait
+			}
 		}
 
 		repositories := make([]types.Repository, len(query.User.PinnedItems.Nodes))
@@ -105,7 +139,6 @@ func GithubAPI() *http.ServeMux {
 			}
 
 			repository.Languages = languages
-
 			repositories[i] = repository
 		}
 

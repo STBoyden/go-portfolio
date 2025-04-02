@@ -1,0 +1,36 @@
+package views
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+
+func yesOrNo(isPublished bool) string {
+	if isPublished {
+		return "yes"
+	} else {
+		return "no"
+	}
+}
+
+templ BlogPost(post persistence.Post, showAdminInformation bool) {
+	<div class="w-[65%] my-2 mx-auto">
+		@components.Title(post.Content.Title)
+		//
+		<div class="mt-2 mb-4">
+			<p>Created: { post.CreatedAt.String() }</p>
+			if showAdminInformation {
+				<p>Published?: { yesOrNo(post.Published) }</p>
+				<p>Internal database ID: { post.ID.String() }</p>
+				//
+				if !post.Published {
+					<button class="btn btn-warning">Publish post</button>
+				} else {
+					<button class="btn btn-warning">Unpublish post</button>
+				}
+			}
+		</div>
+		//
+		<div id="preview">
+			@templ.Raw(post.Content.Text)
+		</div>
+	</div>
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"time"
 )
 
@@ -58,18 +59,102 @@ func getPostDataById(id *uuid.UUID) <-chan response {
 				return
 			}
 		}
-
 	}()
 
 	return responsech
 }
 
-templ BlogAdminPostEdit(id *uuid.UUID) {
-	for response := range getPostDataById(id) {
-		@templ.Flush() {
-			if response.err != nil && !errors.Is(response.err, errIdWasNull) {
-				@templ.JSFuncCall("console.log", fmt.Sprintf("an error occurred: %v", response.err))
+func getPostOrDefault(post *persistence.Post) persistence.Post {
+	if post != nil {
+		return *post
+	} else {
+		return persistence.Post{}
+	}
+}
+
+script goBack() {
+	history.back();
+}
+
+func getEndpoint(isEditing bool) templ.SafeURL {
+	if isEditing {
+		return "/api/v1/blog/admin/edit-post"
+	} else {
+		return "/api/v1/blog/admin/new-post"
+	}
+}
+
+templ BlogAdminPostEdit(id *uuid.UUID, isEditing bool) {
+	<div x-data='{slug: "", title: "", content: "", }'>
+		for response := range getPostDataById(id) {
+			@templ.Flush() {
+				if response.err != nil && !errors.Is(response.err, errIdWasNull) && !errors.Is(response.err, pgx.ErrNoRows) {
+					@templ.JSFuncCall("console.log", fmt.Sprintf("an error occurred: %v", response.err))
+					@goBack()
+				} else {
+					<form
+						method="POST"
+						action={ getEndpoint(isEditing) }
+						class="space-y-4 p-4 card bg-base-200"
+					>
+						<div class="form-control">
+							<label class="label" for="title">
+								<span class="label-text">Blog Title</span>
+							</label>
+							<input
+								type="text"
+								id="title"
+								name="title"
+								class="input input-bordered"
+								x-model="title"
+								value={ getPostOrDefault(response.post).Content.Title }
+								required
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label" for="slug">
+								<span class="label-text">Slug</span>
+							</label>
+							<input
+								type="text"
+								id="slug"
+								name="slug"
+								class="input input-bordered"
+								x-model="slug"
+								value={ getPostOrDefault(response.post).Slug }
+								required
+							/>
+						</div>
+						<div class="grid grid-cols-2">
+							<div class="form-control w-full">
+								<label class="label" for="content">
+									<span class="label-text">Blog Content</span>
+								</label>
+								<textarea
+									id="content"
+									name="content"
+									class="textarea textarea-bordered h-64 w-full resize-none"
+									x-model="content"
+									required
+								>{ getPostOrDefault(response.post).Content.Text }</textarea>
+							</div>
+							<div class="form-control w-full">
+								<label class="label" for="preview">
+									<span class="label-text">Preview</span>
+								</label>
+								<div
+									id="preview"
+									class="prose p-4 bg-base-100 border border-base-300 rounded-box h-64 overflow-auto w-full"
+									x-html="content"
+								></div>
+							</div>
+						</div>
+						<div class="form-control mt-6">
+							<button type="submit" class="btn btn-primary">Save Post</button>
+						</div>
+					</form>
+				}
 			}
 		}
-	}
+	</div>
 }

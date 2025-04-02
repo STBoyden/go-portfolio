@@ -1,5 +1,7 @@
 -- name: NewAuth :one
-INSERT INTO "authorisations" (id) VALUES (gen_random_uuid()) RETURNING *;
+INSERT INTO "authorisations" (id)
+VALUES (gen_random_uuid())
+RETURNING *;
 
 -- name: GetExpiredAuths :many
 SELECT * FROM "authorisations" WHERE "expiry" <= current_timestamp;

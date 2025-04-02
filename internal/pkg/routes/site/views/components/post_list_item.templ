@@ -3,26 +3,63 @@ package components
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 
+script goToBlogPreview(slug string) {
+	window.location.href = "/blog/admin/preview/" + slug
+}
+
+func getSubstring(text string) string {
+	output := text
+	const maxLength = 200
+
+	if len(text) >= maxLength {
+		output = text[:maxLength-3] + "..."
+	}
+
+	return output
+}
+
 templ PostList(posts []persistence.Post, showEdit bool) {
 	if !showEdit && len(posts) == 0 {
 		<div>
 			No blog posts (yet...)
 		</div>
 	} else {
-		<div class="flex flex-row gap-2">
-			for post := range utils.StreamArray(posts) {
-				@templ.Flush() {
-					<span>{ post.Content.Title }</span>
-				}
-			}
+		<div class="grid grid-cols-2 justify-center gap-2 w-[75%] mx-auto">
 			<button
-				class="btn btn-md btn-info text-info-content"
+				class="btn btn-md btn-info text-info-content col-span-2"
 				hx-target="#body"
 				hx-get="/blog/admin/new-post"
 				hx-swap="innerHTML"
 			>
 				New post
 			</button>
+			//
+			if showEdit {
+				<script>
+				    function goToBlog(slug) {
+						window.location.href = "/blog/admin/preview/" + slug;
+					}
+				</script>
+			} else {
+				<script>
+				    function goToBlog(slug) {
+						window.location.href = "/blog/post/" + slug;
+					}
+				</script>
+			}
+			for post := range utils.StreamArray(posts) {
+				@templ.Flush() {
+					<div
+						onclick={ templ.JSFuncCall("goToBlog", post.Slug) }
+						class="p-4 card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
+					>
+						<h2 class="card-title">{ post.Content.Title }</h2>
+						<p>
+							@templ.Raw(getSubstring(post.Content.Text))
+						</p>
+					</div>
+				}
+			}
 		</div>
 	}
 }
