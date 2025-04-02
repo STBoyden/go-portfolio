@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
@@ -35,6 +36,38 @@ var (
 
 const blogAuthLogTag string = "blog-auth"
 
+func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) {
+	queries := persistence.New(utils.Database)
+	rowsUpdated, err := queries.PublishPost(ctx, id)
+	if err != nil {
+		panic(fmt.Sprintf("could not publish post: %v", err))
+	}
+
+	if rowsUpdated == 0 {
+		w.Log(middleware.Info, "post with ID '%v' already published", id)
+	} else {
+		w.Log(middleware.Info, "post with ID '%v' published", id)
+	}
+
+	w.Header().Add("Hx-Trigger", "reload")
+}
+
+func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) {
+	queries := persistence.New(utils.Database)
+	rowsUpdated, err := queries.UnpublishPost(ctx, id)
+	if err != nil {
+		panic(fmt.Sprintf("could not publish post: %v", err))
+	}
+
+	if rowsUpdated == 0 {
+		w.Log(middleware.Info, "post with ID '%v' already unpublished", id)
+	} else {
+		w.Log(middleware.Info, "post with ID '%v' unpublished", id)
+	}
+
+	w.Header().Add("Hx-Trigger", "reload")
+}
+
 func blogAdmin() *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -45,12 +78,6 @@ func blogAdmin() *http.ServeMux {
 			w.Log(middleware.Info, "form not submitted correctly: %v", err)
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
-		}
-
-		type form struct {
-			Title   string `json:"title"`
-			Slug    string `json:"slug"`
-			Content string `json:"content"`
 		}
 
 		if _, authed := w.Details(); !authed {
@@ -102,10 +129,47 @@ func blogAdmin() *http.ServeMux {
 		component := components.PostList(posts, true)
 		if err != nil {
 			component = components.Error(err)
-			return
 		}
 
 		templ.Handler(component, templ.WithStreaming()).ServeHTTP(w, r)
+	})
+
+	mux.HandleFunc("POST /edit/{id}/publish", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.AuthMiddleware](_w)
+
+		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to publish posts")
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
+		}
+
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.Log(middleware.Info, "invalid id provided")
+			w.PrepareHeader(http.StatusBadRequest)
+			return
+		}
+
+		publish(r.Context(), w, id)
+	})
+
+	mux.HandleFunc("POST /edit/{id}/unpublish", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.AuthMiddleware](_w)
+
+		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to unpublish posts")
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
+		}
+
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.Log(middleware.Info, "invalid id provided")
+			w.PrepareHeader(http.StatusBadRequest)
+			return
+		}
+
+		unpublish(r.Context(), w, id)
 	})
 
 	return mux

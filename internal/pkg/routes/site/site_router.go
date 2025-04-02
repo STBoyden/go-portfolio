@@ -71,6 +71,32 @@ func Router() *http.ServeMux {
 	mux.Handle("GET /page/about", templ.Handler(views.About()))
 	mux.Handle("GET /blog", templ.Handler(views.Root(views.Blog())))
 
+	mux.HandleFunc("GET /blog/post/{slug}", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.LoggingMiddleware](_w)
+
+		slug := r.PathValue("slug")
+		if slug == "" {
+			w.Log(middleware.Info, "http", "slug path value was invalid")
+			http.NotFound(w, r)
+			return
+		}
+
+		queries := persistence.New(utils.Database)
+
+		post, err := queries.GetPublishedPostBySlug(r.Context(), slug)
+		if err != nil {
+			w.Log(middleware.Info, "http", "could not get post: %v", err)
+			http.NotFound(w, r)
+			return
+		}
+
+		if _, isHtmx := r.Header["Hx-Request"]; isHtmx {
+			templ.Handler(views.BlogPost(post, false)).ServeHTTP(w, r)
+		} else {
+			templ.Handler(views.Root(views.BlogPost(post, false))).ServeHTTP(w, r)
+		}
+	})
+
 	mux.HandleFunc("GET /blog/admin", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.LoggingMiddleware](_w)
 

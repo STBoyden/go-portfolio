@@ -18,6 +18,22 @@ func getSubstring(text string) string {
 	return output
 }
 
+func publishedStateClasses(isPublished bool) string {
+	if isPublished {
+		return "badge badge-success badge-soft"
+	} else {
+		return "badge badge-warning badge-soft"
+	}
+}
+
+func publishedState(isPublished bool) string {
+	if isPublished {
+		return "Published"
+	} else {
+		return "Unpublished"
+	}
+}
+
 templ PostList(posts []persistence.Post, showEdit bool) {
 	if !showEdit && len(posts) == 0 {
 		<div>
@@ -25,16 +41,16 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 		</div>
 	} else {
 		<div class="grid grid-cols-2 justify-center gap-2 w-[75%] mx-auto">
-			<button
-				class="btn btn-md btn-info text-info-content col-span-2"
-				hx-target="#body"
-				hx-get="/blog/admin/new-post"
-				hx-swap="innerHTML"
-			>
-				New post
-			</button>
-			//
 			if showEdit {
+				<button
+					class="btn btn-md btn-info text-info-content col-span-2"
+					hx-target="#body"
+					hx-get="/blog/admin/new-post"
+					hx-swap="innerHTML"
+				>
+					New post
+				</button>
+				//
 				<script>
 				    function goToBlog(slug) {
 						window.location.href = "/blog/admin/preview/" + slug;
@@ -50,13 +66,27 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 			for post := range utils.StreamArray(posts) {
 				@templ.Flush() {
 					<div
-						onclick={ templ.JSFuncCall("goToBlog", post.Slug) }
-						class="p-4 card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
+						if showEdit {
+							onclick={ templ.JSFuncCall("goToBlog", post.Slug) }
+						} else {
+							hx-get={ "/blog/post/" + post.Slug }
+							hx-target="#body"
+							hx-replace-url={ "/blog/post/" + post.Slug }
+						}
+						class="card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
 					>
-						<h2 class="card-title">{ post.Content.Title }</h2>
-						<p>
-							@templ.Raw(getSubstring(post.Content.Text))
-						</p>
+						<div class="card-body">
+							if showEdit {
+								<span class={ publishedStateClasses(post.Published) }>{ publishedState(post.Published) }</span>
+							}
+							<h2 class="card-title">{ post.Content.Title }</h2>
+							<div>
+								<p>Created at: { post.CreatedAt.String() }</p>
+							</div>
+							<div>
+								@templ.Raw(getSubstring(post.Content.Text))
+							</div>
+						</div>
 					</div>
 				}
 			}

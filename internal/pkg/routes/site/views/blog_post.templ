@@ -18,13 +18,23 @@ templ BlogPost(post persistence.Post, showAdminInformation bool) {
 		<div class="mt-2 mb-4">
 			<p>Created: { post.CreatedAt.String() }</p>
 			if showAdminInformation {
+				<script>
+					document.body.addEventListener("reload", () => {
+					   window.location.reload();
+					})
+				</script>
 				<p>Published?: { yesOrNo(post.Published) }</p>
 				<p>Internal database ID: { post.ID.String() }</p>
-				//
-				if !post.Published {
-					<button class="btn btn-warning">Publish post</button>
+				if post.Published {
+					<button
+						class="btn btn-warning"
+						hx-post={ "/api/v1/blog/admin/edit/" + post.ID.String() + "/unpublish" }
+					>Unpublish post</button>
 				} else {
-					<button class="btn btn-warning">Unpublish post</button>
+					<button
+						class="btn btn-warning"
+						hx-post={ "/api/v1/blog/admin/edit/" + post.ID.String() + "/publish" }
+					>Publish post</button>
 				}
 			}
 		</div>

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,20 +96,15 @@ func (l *LoggingMiddleware) WriteHeader(statusCode int) {
 }
 
 func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
-	f := "request_id=%v method=%s status=%s path=%s elapsed=%v"
+	f := "request_id=%v method=%s status=%d path=%s elapsed=%v"
 	if format != "" {
 		f = fmt.Sprintf("%s\n\t[%s] msg=%s", f, prefix, format)
-	}
-
-	status := strconv.Itoa(l.status)
-	if l.status == 0 {
-		status = "pending"
 	}
 
 	args := []any{
 		l.requestID.String()[:8],
 		l.associatedRequest.Method,
-		status,
+		l.status,
 		l.associatedRequest.URL.EscapedPath(),
 		time.Since(l.start),
 	}
@@ -148,10 +142,9 @@ func loggerWrapper(next http.Handler) http.Handler {
 		wrapped = loggingWrapResponseWriter(w, r, start)
 		next.ServeHTTP(wrapped, r)
 
-		if !wrapped.HeaderPrepared() {
-			wrapped.PrepareHeader(http.StatusOK)
+		if wrapped.HeaderPrepared() {
+			wrapped.WritePreparedHeader()
 		}
-		wrapped.WritePreparedHeader()
 
 		wrapped.Log(Info, "http", "finished handling request")
 	})
