@@ -17,7 +17,6 @@ templ BlogAdminAuthed(showExpirationWarning bool) {
 		<div class="mt-5">
 			<div
 				hx-get="/api/v1/blog/admin/posts"
-				hx-params="*"
 				hx-trigger="load"
 				hx-swap="outerHTML"
 			></div>

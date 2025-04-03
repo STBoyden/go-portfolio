@@ -20,7 +20,7 @@ templ BlogAdminLogin() {
 		hx-swap="innerHTML"
 		hx-trigger="login-page-reload from:body"
 	></div>
-	<div x-data="login">
+	<div x-data="login" hx-history="false">
 		<form
 			class="max-w-md mx-auto p-6 rounded shadow-md bg-base-300"
 			hx-post="/api/v1/blog/authenticate"

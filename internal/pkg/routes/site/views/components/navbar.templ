@@ -9,6 +9,7 @@ templ links() {
 		hx-swap="innerHTML"
 		hx-get="/"
 		hx-push-url="true"
+		preload-images="true"
 	>
 		Home
 	</li>
@@ -43,6 +44,7 @@ templ Navbar() {
 					tabindex="0"
 					hx-boost="true"
 					class="menu menu-sm dropdown-content bg-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
+					preload
 				>
 					@links()
 				</ul>
@@ -54,6 +56,7 @@ templ Navbar() {
 				tabindex="0"
 				class="menu menu-horizontal"
 				hx-boost="true"
+				preload="mouseover"
 			>
 				@links()
 			</ul>

@@ -2,6 +2,7 @@ install_deps:
     pnpm install
     mkdir -p static/js
     cp node_modules/htmx.org/dist/htmx.min.js static/js
+    cp node_modules/htmx-ext-preload/dist/preload.min.js static/js/htmx-preload.min.js
     cp node_modules/alpinejs/dist/cdn.min.js static/js/alpinejs.min.js
     go mod download
     go mod verify
