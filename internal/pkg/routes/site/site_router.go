@@ -8,6 +8,7 @@ import (
 
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/handlers/htmx"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
@@ -28,7 +29,7 @@ func needAuthRoutes() http.Handler {
 			return
 		}
 
-		templ.Handler(views.BlogAdminPostEdit(nil, false), templ.WithStreaming()).ServeHTTP(w, r)
+		htmx.Handler(views.BlogAdminPostEdit(nil, false), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	submux.HandleFunc("GET /preview/{slug}", func(_w http.ResponseWriter, r *http.Request) {
@@ -56,7 +57,7 @@ func needAuthRoutes() http.Handler {
 			return
 		}
 
-		templ.Handler(views.Root(views.BlogPost(post, true))).ServeHTTP(w, r)
+		htmx.Handler(views.BlogPost(post, true)).ServeHTTP(w, r)
 	})
 
 	return submux
@@ -65,11 +66,9 @@ func needAuthRoutes() http.Handler {
 func Router() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /{$}", templ.Handler(views.Root(views.Index())))
-	mux.Handle("GET /about", templ.Handler(views.Root(views.About())))
-	mux.Handle("GET /page/index", templ.Handler(views.Index()))
-	mux.Handle("GET /page/about", templ.Handler(views.About()))
-	mux.Handle("GET /blog", templ.Handler(views.Root(views.Blog())))
+	mux.Handle("GET /{$}", htmx.Handler(views.Index()))
+	mux.Handle("GET /about", htmx.Handler(views.About()))
+	mux.Handle("GET /blog", htmx.Handler(views.Blog()))
 
 	mux.HandleFunc("GET /blog/post/{slug}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.LoggingMiddleware](_w)
@@ -90,11 +89,7 @@ func Router() *http.ServeMux {
 			return
 		}
 
-		if _, isHtmx := r.Header["Hx-Request"]; isHtmx {
-			templ.Handler(views.BlogPost(post, false)).ServeHTTP(w, r)
-		} else {
-			templ.Handler(views.Root(views.BlogPost(post, false))).ServeHTTP(w, r)
-		}
+		htmx.Handler(views.BlogPost(post, false)).ServeHTTP(w, r)
 	})
 
 	mux.HandleFunc("GET /blog/admin", func(_w http.ResponseWriter, r *http.Request) {
@@ -138,12 +133,10 @@ func Router() *http.ServeMux {
 			return
 		}
 
-		component = views.Root(views.BlogAdminAuthed(showExpirationWarning))
-		templ.Handler(component).ServeHTTP(w, r)
+		htmx.Handler(views.BlogAdminAuthed(showExpirationWarning)).ServeHTTP(w, r)
 	})
 
 	mux.Handle("/blog/admin/", middleware.Handlers.Authorisation(http.StripPrefix("/blog/admin", needAuthRoutes())))
-	mux.Handle("GET /page/blog/{$}", templ.Handler(views.Blog()))
 
 	return mux
 }

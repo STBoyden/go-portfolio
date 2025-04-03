@@ -3,10 +3,6 @@ package components
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 
-script goToBlogPreview(slug string) {
-	window.location.href = "/blog/admin/preview/" + slug
-}
-
 func getSubstring(text string) string {
 	output := text
 	const maxLength = 200
@@ -65,14 +61,18 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 			}
 			for post := range utils.StreamArray(posts) {
 				@templ.Flush() {
-					<div
+					{{
+						var url string
 						if showEdit {
-							onclick={ templ.JSFuncCall("goToBlog", post.Slug) }
+							url = "/blog/admin/preview/" + post.Slug
 						} else {
-							hx-get={ "/blog/post/" + post.Slug }
-							hx-target="#body"
-							hx-replace-url={ "/blog/post/" + post.Slug }
+							url = "/blog/post/" + post.Slug
 						}
+					}}
+					<div
+						hx-get={ url }
+						hx-push-url={ url }
+						hx-target="#body"
 						class="card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
 					>
 						<div class="card-body">
