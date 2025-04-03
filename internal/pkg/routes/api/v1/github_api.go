@@ -104,13 +104,13 @@ func GithubAPI() *http.ServeMux {
 			case <-ctx.Done():
 				templ.Handler(components.Error(errors.New("timed out"))).ServeHTTP(w, r)
 				return
-			case response := <-responsech:
-				if response.err != nil {
-					templ.Handler(components.Error(response.err)).ServeHTTP(w, r)
+			case resp := <-responsech:
+				if resp.err != nil {
+					templ.Handler(components.Error(resp.err)).ServeHTTP(w, r)
 					return
 				}
 
-				query = *response.query
+				query = *resp.query
 				break Wait
 			}
 		}
