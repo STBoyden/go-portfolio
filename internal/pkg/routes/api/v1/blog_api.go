@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -34,10 +35,23 @@ var (
 	errIncorrectCredentials        = errors.New("incorrect credentials")
 )
 
+//nolint:gochecknoglobals // slugReplacer is a Replacer which *could* be expensive to re-allocate each use. It makes sense to memoise it globally.
+var slugReplacer = strings.NewReplacer(" ", "-", "_", "-", "+", "-")
+
+func cleanSlug(slug string) string {
+	slug = url.PathEscape(slug)
+	return slugReplacer.Replace(strings.ToLower(strings.TrimSpace(slug)))
+}
+
 const blogAuthLogTag string = "blog-auth"
 
-func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) {
-	queries := persistence.New(utils.Database)
+func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
+	queries, tx, err := utils.Database.NewTransaction(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("could not start new transaction: %v", err))
+	}
+	defer tx.Rollback(ctx)
+
 	rowsUpdated, err := queries.PublishPost(ctx, id)
 	if err != nil {
 		panic(fmt.Sprintf("could not publish post: %v", err))
@@ -50,10 +64,17 @@ func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) {
 	}
 
 	w.Header().Add("Hx-Trigger", "reload")
+
+	return tx.Commit(ctx)
 }
 
-func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) {
-	queries := persistence.New(utils.Database)
+func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
+	queries, tx, err := utils.Database.NewTransaction(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("could not start new transaction: %v", err))
+	}
+	defer tx.Rollback(ctx)
+
 	rowsUpdated, err := queries.UnpublishPost(ctx, id)
 	if err != nil {
 		panic(fmt.Sprintf("could not publish post: %v", err))
@@ -66,6 +87,8 @@ func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) 
 	}
 
 	w.Header().Add("Hx-Trigger", "reload")
+
+	return tx.Commit(ctx)
 }
 
 func blogAdmin() *http.ServeMux {
@@ -93,6 +116,8 @@ func blogAdmin() *http.ServeMux {
 			w.Log(middleware.Info, "form content is invalid")
 		}
 
+		slug = cleanSlug(slug)
+
 		blogContent := types.BlogContent{
 			Title: title,
 			Text:  content,
@@ -102,7 +127,12 @@ func blogAdmin() *http.ServeMux {
 			panic(fmt.Sprintf("unable to marshal blog content: %v", err))
 		}
 
-		queries := persistence.New(utils.Database)
+		queries, tx, err := utils.Database.NewTransaction(r.Context())
+		if err != nil {
+			panic(fmt.Sprintf("could not start transaction: %v", err))
+		}
+		defer tx.Rollback(r.Context())
+
 		post, err := queries.CreatePost(r.Context(), persistence.CreatePostParams{
 			Slug:    slug,
 			Content: contentBuffer,
@@ -110,28 +140,78 @@ func blogAdmin() *http.ServeMux {
 		if err != nil {
 			panic(fmt.Sprintf("was unable to insert a new post: %v", err))
 		}
+		_ = tx.Commit(r.Context())
 
-		http.Redirect(w, r, fmt.Sprintf("/blog/%s", post.Slug), http.StatusFound)
+		http.Redirect(w, r, "/blog/admin/preview/"+url.PathEscape(post.Slug), http.StatusFound)
 	})
 
-	mux.HandleFunc("GET /posts", func(_w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /edit/{id}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
-		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to get unpublished posts")
+		if err := r.ParseForm(); err != nil {
+			w.Log(middleware.Info, "form not submitted correctly: %v", err)
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
-		queries := persistence.New(utils.Database)
-		posts, err := queries.GetAllPosts(r.Context())
-
-		component := components.PostList(posts, true)
-		if err != nil {
-			component = components.Error(err)
+		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to edit post")
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
 		}
 
-		templ.Handler(component, templ.WithStreaming()).ServeHTTP(w, r)
+		content := r.PostFormValue("content")
+		title := r.PostFormValue("title")
+		if title == "" || content == "" {
+			w.Log(middleware.Info, "form content is invalid")
+			w.PrepareHeader(http.StatusBadRequest)
+			return
+		}
+
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.Log(middleware.Info, "id value is invalid")
+			w.PrepareHeader(http.StatusBadRequest)
+			return
+		}
+
+		blogContent := types.BlogContent{Title: title, Text: content}
+		contentBuffer, err := json.Marshal(&blogContent)
+		if err != nil {
+			panic(fmt.Sprintf("unable to marshal blog content: %v", err))
+		}
+
+		queries, tx, err := utils.Database.NewTransaction(r.Context())
+		if err != nil {
+			panic(fmt.Sprintf("unable to start transaction: %v", err))
+		}
+		defer tx.Rollback(r.Context())
+
+		rowsUpdated, err := queries.EditPost(r.Context(), persistence.EditPostParams{
+			Content: contentBuffer,
+			ID:      id,
+		})
+		if err != nil {
+			panic(fmt.Sprintf("unable to edit post: %v", err))
+		}
+
+		_ = tx.Commit(r.Context())
+
+		if rowsUpdated == 0 {
+			w.Log(middleware.Info, "post could not be updated for unknown reasons: %v", id)
+		} else {
+			w.Log(middleware.Info, "post with ID '%v' updated", id)
+		}
+
+		queries = utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
+
+		post, err := queries.GetPostByID(r.Context(), id)
+		if err != nil {
+			panic(fmt.Sprintf("could not get post that was previously updated??: %v", err))
+		}
+
+		http.Redirect(w, r, "/blog/admin/preview/"+post.Slug, http.StatusFound)
 	})
 
 	mux.HandleFunc("POST /edit/{id}/publish", func(_w http.ResponseWriter, r *http.Request) {
@@ -150,7 +230,10 @@ func blogAdmin() *http.ServeMux {
 			return
 		}
 
-		publish(r.Context(), w, id)
+		err = publish(r.Context(), w, id)
+		if err != nil {
+			panic(fmt.Sprintf("unable to commit changes: %v", err))
+		}
 	})
 
 	mux.HandleFunc("POST /edit/{id}/unpublish", func(_w http.ResponseWriter, r *http.Request) {
@@ -169,7 +252,32 @@ func blogAdmin() *http.ServeMux {
 			return
 		}
 
-		unpublish(r.Context(), w, id)
+		err = unpublish(r.Context(), w, id)
+		if err != nil {
+			panic(fmt.Sprintf("unable to commit changes: %v", err))
+		}
+	})
+
+	mux.HandleFunc("GET /posts", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.AuthMiddleware](_w)
+
+		if _, authed := w.Details(); !authed {
+			w.Log(middleware.Info, "user is not authorised to get unpublished posts")
+			w.PrepareHeader(http.StatusUnauthorized)
+			return
+		}
+
+		queries := utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
+
+		posts, err := queries.GetAllPosts(r.Context())
+
+		component := components.PostList(posts, true)
+		if err != nil {
+			component = components.Error(err)
+		}
+
+		templ.Handler(component, templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	return mux
@@ -194,8 +302,11 @@ func checkAuthentication(_w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queries := persistence.New(utils.Database)
+	queries := utils.Database.StartQueries()
 	authorisation, err := queries.GetAuthByToken(r.Context(), token)
+
+	utils.Database.EndQueries()
+
 	if err != nil {
 		w.Log(middleware.Warn, blogAuthLogTag, "internal error occurred: de-authing user just in case: could not get authorisation token: %v", err)
 		w.PrepareHeader(http.StatusUnauthorized)
@@ -253,11 +364,18 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queries := persistence.New(utils.Database)
+	queries, tx, err := utils.Database.NewTransaction(r.Context())
+	if err != nil {
+		panic(fmt.Sprintf("unable to start transaction: %v", err))
+	}
+	defer tx.Rollback(r.Context())
+
 	auth, err := queries.NewAuth(r.Context())
 	if err != nil {
 		panic(fmt.Sprintf("unable to create a new token: %v", err))
 	}
+
+	_ = tx.Commit(r.Context())
 
 	w.Header().Add("Hx-Trigger", "login-page-reload")
 	http.SetCookie(w, &http.Cookie{
@@ -280,7 +398,9 @@ func BlogAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /posts", func(w http.ResponseWriter, r *http.Request) {
-		queries := persistence.New(utils.Database)
+		queries := utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
+
 		posts, err := queries.GetPublishedPosts(r.Context())
 		if err != nil {
 			templ.Handler(components.Error(err)).ServeHTTP(w, r)

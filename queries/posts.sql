@@ -23,3 +23,8 @@ UPDATE "posts" SET published = TRUE WHERE id = @id::uuid;
 
 -- name: UnpublishPost :execrows
 UPDATE "posts" SET published = FALSE WHERE id = @id::uuid;
+
+-- name: EditPost :execrows
+UPDATE "posts"
+SET content = @content::json
+WHERE id = @id::uuid;

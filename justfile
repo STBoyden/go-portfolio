@@ -5,7 +5,6 @@ install_deps:
     cp node_modules/htmx-ext-preload/dist/preload.min.js static/js/htmx-preload.min.js
     cp node_modules/alpinejs/dist/cdn.min.js static/js/alpinejs.min.js
     go mod download
-    go mod verify
 
 generate: install_deps
     go generate ./internal/pkg/routes/site
@@ -39,7 +38,7 @@ build: generate
 cd_build: cd_prepare
     go build -tags=ci -o build/portfolio ./cmd/main
 
-lint: build
+lint: generate
     go tool -modfile=golangci-lint.mod github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 dev:

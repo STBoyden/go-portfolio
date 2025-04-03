@@ -2,6 +2,7 @@ package components
 
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+import "net/url"
 
 func getSubstring(text string) string {
 	output := text
@@ -16,9 +17,9 @@ func getSubstring(text string) string {
 
 func publishedStateClasses(isPublished bool) string {
 	if isPublished {
-		return "badge badge-success badge-soft"
+		return "badge badge-success badge-soft justify-center mx-auto"
 	} else {
-		return "badge badge-warning badge-soft"
+		return "badge badge-warning badge-soft justify-center mx-auto"
 	}
 }
 
@@ -36,48 +37,41 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 			No blog posts (yet...)
 		</div>
 	} else {
-		<div class="grid grid-cols-2 justify-center gap-2 w-[75%] mx-auto" preload="mouseover" preload-images="true">
+		<div class="grid grid-cols-2 justify-center gap-2 min-w-[75%] mx-auto" preload="mouseover" preload-images="true">
 			if showEdit {
 				<button
 					class="btn btn-md btn-info text-info-content col-span-2"
 					hx-target="#body"
 					hx-get="/blog/admin/new-post"
-					hx-swap="innerHTML"
+					hx-push-url="true"
 				>
 					New post
 				</button>
-				//
-				<script>
-				    function goToBlog(slug) {
-						window.location.href = "/blog/admin/preview/" + slug;
-					}
-				</script>
-			} else {
-				<script>
-				    function goToBlog(slug) {
-						window.location.href = "/blog/post/" + slug;
-					}
-				</script>
 			}
 			for post := range utils.StreamArray(posts) {
 				@templ.Flush() {
 					{{
-						var url string
+						var uri, editURL string
 						if showEdit {
-							url = "/blog/admin/preview/" + post.Slug
+							uri = "/blog/admin/preview/" + url.PathEscape(post.Slug)
+							editURL = "/blog/admin/edit/" + post.ID.String()
 						} else {
-							url = "/blog/post/" + post.Slug
+							uri = "/blog/post/" + url.PathEscape(post.Slug)
 						}
 					}}
 					<div
-						hx-get={ url }
-						hx-push-url={ url }
-						hx-target="#body"
+						if !showEdit {
+							hx-get={ uri }
+							hx-push-url={ uri }
+							hx-target="#body"
+						}
 						class="card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
 					>
 						<div class="card-body">
 							if showEdit {
-								<span class={ publishedStateClasses(post.Published) }>{ publishedState(post.Published) }</span>
+								<span class={ publishedStateClasses(post.Published) }>
+									{ publishedState(post.Published) }
+								</span>
 							}
 							<h2 class="card-title">{ post.Content.Title }</h2>
 							<div>
@@ -86,6 +80,22 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 							<div>
 								@templ.Raw(getSubstring(post.Content.Text))
 							</div>
+							if showEdit {
+								<div class="mt-auto card-actions justify-end">
+									<button
+										class="btn btn-sm btn-primary mx-auto"
+										hx-get={ uri }
+										hx-push-url="true"
+										hx-target="#body"
+									>Open</button>
+									<button
+										class="btn btn-sm btn-secondary mx-auto"
+										hx-get={ editURL }
+										hx-push-url="true"
+										hx-target="#body"
+									>Edit</button>
+								</div>
+							}
 						</div>
 					</div>
 				}

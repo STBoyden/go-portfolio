@@ -33,8 +33,7 @@ type owner struct {
 }
 
 type repository struct {
-	//nolint:revive,stylecheck // This is a struct to represent a GraphQL object, and as such needs to be named this way.
-	Url         gh.URI
+	URL         gh.URI
 	Name        gh.String
 	Owner       owner
 	Description gh.String
@@ -123,7 +122,7 @@ func GithubAPI() *http.ServeMux {
 				Owner:       string(entry.Owner.Login),
 				Name:        string(entry.Name),
 				Description: string(entry.Description),
-				URL:         entry.Url.String(),
+				URL:         entry.URL.String(),
 			}
 
 			languages := make([]types.Language, len(entry.Languages.Nodes))

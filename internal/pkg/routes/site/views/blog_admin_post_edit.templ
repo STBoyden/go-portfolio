@@ -1,14 +1,9 @@
 package views
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"time"
 )
 
 var (
@@ -19,49 +14,6 @@ var (
 type response struct {
 	post *persistence.Post
 	err  error
-}
-
-func getPostDataById(id *uuid.UUID) <-chan response {
-	responsech := make(chan response, 1024)
-
-	if id == nil {
-		defer close(responsech)
-		responsech <- response{post: nil, err: errIdWasNull}
-		return responsech
-	}
-
-	go func() {
-		inner := make(chan response, 1024)
-		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		defer cancel()
-
-		go func() {
-			defer close(inner)
-
-			queries := persistence.New(utils.Database)
-			post, err := queries.GetPostByID(ctx, *id)
-			p := &post
-			if err != nil {
-				p = nil
-			}
-
-			inner <- response{post: p, err: err}
-		}()
-
-		defer close(responsech)
-		for {
-			select {
-			case response := <-inner:
-				responsech <- response
-				return
-			case <-ctx.Done():
-				responsech <- response{post: nil, err: errDatabaseQueryTimedOut}
-				return
-			}
-		}
-	}()
-
-	return responsech
 }
 
 func getPostOrDefault(post *persistence.Post) persistence.Post {
@@ -76,85 +28,85 @@ script goBack() {
 	history.back();
 }
 
-func getEndpoint(isEditing bool) templ.SafeURL {
-	if isEditing {
-		return "/api/v1/blog/admin/edit-post"
+func getEndpoint(isEditing bool, post *persistence.Post) templ.SafeURL {
+	if isEditing && post != nil {
+		return templ.SafeURL(fmt.Sprintf("/api/v1/blog/admin/edit/%s", post.ID.String()))
 	} else {
 		return "/api/v1/blog/admin/new-post"
 	}
 }
 
-templ BlogAdminPostEdit(id *uuid.UUID, isEditing bool) {
-	<div x-data='{slug: "", title: "", content: "", }'>
-		for response := range getPostDataById(id) {
-			@templ.Flush() {
-				if response.err != nil && !errors.Is(response.err, errIdWasNull) && !errors.Is(response.err, pgx.ErrNoRows) {
-					@templ.JSFuncCall("console.log", fmt.Sprintf("an error occurred: %v", response.err))
-					@goBack()
-				} else {
-					<form
-						method="POST"
-						action={ getEndpoint(isEditing) }
-						class="space-y-4 p-4 card bg-base-200"
-					>
-						<div class="form-control">
-							<label class="label" for="title">
-								<span class="label-text">Blog Title</span>
-							</label>
-							<input
-								type="text"
-								id="title"
-								name="title"
-								class="input input-bordered"
-								x-model="title"
-								value={ getPostOrDefault(response.post).Content.Title }
-								required
-							/>
-						</div>
-						<div class="form-control">
-							<label class="label" for="slug">
-								<span class="label-text">Slug</span>
-							</label>
-							<input
-								type="text"
-								id="slug"
-								name="slug"
-								class="input input-bordered"
-								x-model="slug"
-								value={ getPostOrDefault(response.post).Slug }
-								required
-							/>
-						</div>
-						<div class="grid grid-cols-2">
-							<div class="form-control w-full">
-								<label class="label" for="content">
-									<span class="label-text">Blog Content</span>
-								</label>
-								<textarea
-									id="content"
-									name="content"
-									class="textarea textarea-bordered h-64 w-full resize-none"
-									x-model="content"
-									required
-								>{ getPostOrDefault(response.post).Content.Text }</textarea>
-							</div>
-							<div class="form-control w-full">
-								<label class="label" for="preview">
-									<span class="label-text">Preview</span>
-								</label>
-								<div
-									id="preview"
-									class="prose p-4 bg-base-100 border border-base-300 rounded-box h-64 overflow-auto w-full"
-									x-html="content"
-								></div>
-							</div>
-						</div>
-						<div class="form-control mt-6">
-							<button type="submit" class="btn btn-primary">Save Post</button>
-						</div>
-					</form>
-				}
-			}
-		}
+templ BlogAdminPostEdit(_post *persistence.Post, isEditing bool) {
+	{{
+			post := getPostOrDefault(_post)
+	}}
+	<div x-data={ fmt.Sprintf("{slug: '%s', title: '%s', content: '%s' }", post.Slug, post.Content.Title, post.Content.Text) }>
+		<form
+			method="POST"
+			action={ getEndpoint(isEditing, _post) }
+			class="space-y-4 p-4 card bg-base-200"
+		>
+			<div>
+				<label class="label" for="title">
+					<span class="label-text">Blog Title</span>
+				</label>
+				<input
+					type="text"
+					id="title"
+					name="title"
+					class="input input-bordered"
+					x-model="title"
+					value={ post.Content.Title }
+					required
+				/>
+			</div>
+			<div>
+				<label class="label" for="slug">
+					<span class="label-text">Slug</span>
+				</label>
+				<input
+					type="text"
+					id="slug"
+					name="slug"
+					class="input input-bordered"
+					x-model="slug"
+					value={ post.Slug }
+					if isEditing {
+						disabled
+					}
+					required
+				/>
+			</div>
+			<div class="grid grid-cols-2">
+				<div class="form-control w-full">
+					<label class="label" for="content">
+						<span class="label-text">Blog Content</span>
+					</label>
+					<textarea
+						id="content"
+						name="content"
+						class="textarea textarea-bordered h-64 w-full resize-none"
+						x-model="content"
+						required
+					>{ post.Content.Text }</textarea>
+				</div>
+				<div class="form-control w-full">
+					<label class="label" for="preview">
+						<span class="label-text">Preview</span>
+					</label>
+					<div
+						id="preview"
+						class="prose p-4 bg-base-100 border border-base-300 rounded-box h-64 overflow-auto w-full"
+						x-html="content"
+					></div>
+				</div>
+			</div>
+			<div class="hidden">
+				<input type="password" id="id" x-model="id" value={ post.ID.String() }/>
+			</div>
+			<div class="mt-6">
+				<button type="submit" class="btn btn-primary">Save Post</button>
+			</div>
+		</form>
 	</div>
 }

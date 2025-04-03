@@ -13,9 +13,9 @@ import (
 type level interface{ loggerLevelMarker() }
 
 type (
-	debug  struct{ level }
-	info   struct{ level }
-	warn   struct{ level }
+	_debug struct{ level }
+	_info  struct{ level }
+	_warn  struct{ level }
 	_error struct{ level }
 )
 
@@ -23,9 +23,9 @@ type (
 //
 //nolint:gochecknoglobals // These are logging levels and should be global.
 var (
-	Debug = debug{}
-	Info  = info{}
-	Warn  = warn{}
+	Debug = _debug{}
+	Info  = _info{}
+	Warn  = _warn{}
 	Error = _error{}
 )
 
@@ -113,11 +113,11 @@ func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
 	var logFunc func(string, ...any)
 
 	switch level.(type) {
-	case debug:
+	case _debug:
 		logFunc = slog.Debug
-	case info:
+	case _info:
 		logFunc = slog.Info
-	case warn:
+	case _warn:
 		logFunc = slog.Warn
 	case error:
 		logFunc = slog.Error
@@ -145,7 +145,5 @@ func loggerWrapper(next http.Handler) http.Handler {
 		if wrapped.HeaderPrepared() {
 			wrapped.WritePreparedHeader()
 		}
-
-		wrapped.Log(Info, "http", "finished handling request")
 	})
 }

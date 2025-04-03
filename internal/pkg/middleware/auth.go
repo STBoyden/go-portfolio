@@ -7,7 +7,6 @@ import (
 
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
-	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 )
 
 // AuthMiddleware is an extension over [LoggingMiddleware] (and by extension
@@ -62,7 +61,8 @@ func (a *AuthMiddleware) Authorise(r *http.Request) bool {
 		return false
 	}
 
-	queries := persistence.New(utils.Database)
+	queries := utils.Database.StartQueries()
+	defer utils.Database.EndQueries()
 
 	exists, err := queries.CheckAuthExists(ctx, token)
 	if !exists || err != nil {

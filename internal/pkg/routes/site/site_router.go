@@ -5,21 +5,21 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/google/uuid"
 
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/handlers/htmx"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
-	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
 )
 
 const siteLogTag string = "site"
 
 func needAuthRoutes() http.Handler {
-	submux := http.NewServeMux()
+	mux := http.NewServeMux()
 
-	submux.HandleFunc("/new-post", func(_w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/new-post", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 		log := w.LoggingMiddleware.Log
 
@@ -32,7 +32,37 @@ func needAuthRoutes() http.Handler {
 		htmx.Handler(views.BlogAdminPostEdit(nil, false), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
-	submux.HandleFunc("GET /preview/{slug}", func(_w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/edit/{id}", func(_w http.ResponseWriter, r *http.Request) {
+		w := utils.MustCast[middleware.AuthMiddleware](_w)
+		log := w.LoggingMiddleware.Log
+
+		if !w.Authed() {
+			log(middleware.Info, siteLogTag, "user is not authorised")
+			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
+			return
+		}
+
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			log(middleware.Info, siteLogTag, "user did not provide valid uuid")
+			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
+			return
+		}
+
+		queries := utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
+
+		post, err := queries.GetPostByID(r.Context(), id)
+		if err != nil {
+			log(middleware.Info, siteLogTag, "ID '%v' did not exist in database", id)
+			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
+			return
+		}
+
+		htmx.Handler(views.BlogAdminPostEdit(&post, true), templ.WithStreaming()).ServeHTTP(w, r)
+	})
+
+	mux.HandleFunc("GET /preview/{slug}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 		log := w.LoggingMiddleware.Log
 
@@ -49,7 +79,9 @@ func needAuthRoutes() http.Handler {
 			return
 		}
 
-		queries := persistence.New(utils.Database)
+		queries := utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
+
 		post, err := queries.GetPostBySlug(r.Context(), slug)
 		if err != nil {
 			log(middleware.Info, siteLogTag, "post with given slug could not be found: %v", err)
@@ -60,7 +92,7 @@ func needAuthRoutes() http.Handler {
 		htmx.Handler(views.BlogPost(post, true)).ServeHTTP(w, r)
 	})
 
-	return submux
+	return mux
 }
 
 func Router() *http.ServeMux {
@@ -80,7 +112,8 @@ func Router() *http.ServeMux {
 			return
 		}
 
-		queries := persistence.New(utils.Database)
+		queries := utils.Database.StartQueries()
+		defer utils.Database.EndQueries()
 
 		post, err := queries.GetPublishedPostBySlug(r.Context(), slug)
 		if err != nil {
