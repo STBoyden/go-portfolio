@@ -13,7 +13,7 @@ generate: install_deps
 run_migrations:
     go run ./cmd/migrations
 
-generate_db_types: run_migrations
+generate_db_types:
     go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
 ci_prepare:
