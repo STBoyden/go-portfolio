@@ -40,7 +40,7 @@ templ BlogAdminPostEdit(_post *persistence.Post, isEditing bool) {
 	{{
 			post := getPostOrDefault(_post)
 	}}
-	<div x-data={ fmt.Sprintf("{slug: '%s', title: '%s', content: '%s' }", post.Slug, post.Content.Title, post.Content.Text) }>
+	<div x-data={ fmt.Sprintf("{slug: '%s', title: '%s', content: `%s` }", post.Slug, post.Content.Title, post.Content.Text) }>
 		<form
 			method="POST"
 			action={ getEndpoint(isEditing, _post) }
