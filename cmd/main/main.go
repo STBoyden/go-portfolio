@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/STBoyden/gotenv/v2"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 
 	fs "github.com/STBoyden/go-portfolio"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
@@ -22,11 +22,17 @@ const (
 )
 
 func main() {
-	_, _ = gotenv.LoadEnvFromFS(fs.EnvFile)
+	_, _ = gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
+	dbURL := utils.MustEnv("DB_URL")
 
-	err := migrations.RunMigrations("file://./migrations/")
+	d, err := iofs.New(fs.MigrationsFS, "migrations")
 	if err != nil {
-		panic("couldn't run migrations on database")
+		panic("could not get migrations:" + err.Error())
+	}
+
+	err = migrations.RunMigrations(dbURL, "iofs", d)
+	if err != nil {
+		panic("couldn't run migrations on database" + err.Error())
 	}
 
 	utils.ConnectDB()

@@ -51,7 +51,6 @@ clean:
 run: build
     ./build/portfolio
 
-[confirm("Please make sure that DB_URL is set to a production database URL.\nPress ENTER to continue, use Ctrl+C to cancel > ")]
-deploy: generate_db_types lint
-    source .env
+[confirm("Are you sure you want to manually deploy?")]
+deploy: lint
     fly deploy
