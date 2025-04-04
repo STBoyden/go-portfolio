@@ -1,14 +1,12 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
-	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 )
 
 // AuthMiddleware is an extension over [LoggingMiddleware] (and by extension
@@ -17,6 +15,8 @@ import (
 //
 // For AuthMiddleware to work, a parent [http.Handler] must have been wrapped by
 // the Logger wrapper method as it is required for this middleware.
+//
+//nolint:recvcheck // The Authed, Details and Log methods do not need to have pointer receivers as they should not have the ability to modify the struct.
 type AuthMiddleware struct {
 	*LoggingMiddleware
 
@@ -27,53 +27,42 @@ type AuthMiddleware struct {
 // Details returns a pair, a nullable [uuid.UUID] and bool depending on whether
 // or not the user is authorised with the [uuid.UUID] representing the
 // authorised token previously checked.
-func (a *AuthMiddleware) Details() (*uuid.UUID, bool) {
+func (a AuthMiddleware) Details() (*uuid.UUID, bool) {
 	if a.authed {
-		tokenCopy := a.token
-
-		return &tokenCopy, true
+		return &a.token, true
 	}
 
 	return nil, false
 }
 
+func (a AuthMiddleware) Authed() bool {
+	return a.authed
+}
+
 // Wrapper over [LoggingMiddleware.Log] to standardise the prefix.
-func (a *AuthMiddleware) Log(level level, format string, v ...any) {
+func (a AuthMiddleware) Log(level level, format string, v ...any) {
 	a.LoggingMiddleware.Log(level, "auth", format, v...)
 }
 
-func (a *AuthMiddleware) Authorise(ctx context.Context, requestHeaders http.Header) bool {
-	s, ok := requestHeaders["Authorization"]
-	if !ok || len(s) == 0 {
-		a.Log(Error, "authorisation failed: missing header")
+func (a *AuthMiddleware) Authorise(r *http.Request) bool {
+	ctx := r.Context()
+
+	cookie, err := r.Cookie(consts.TokenCookieName)
+	if err != nil {
+		a.Log(Error, "authorisation failed: missing cookie")
 
 		return false
 	}
 
-	const expectedLength = 2
-
-	splits := strings.SplitN(s[0], " ", expectedLength)
-	if len(splits) != expectedLength {
-		a.Log(Error, "authorisation failed: incorrect header format")
-
-		return false
-	}
-
-	method := splits[0]
-	if method != "Bearer" {
-		a.Log(Error, "authorisation failed: incorrect header format")
-
-		return false
-	}
-
-	token, err := uuid.Parse(splits[1])
+	token, err := uuid.Parse(cookie.Value)
 	if err != nil {
 		a.Log(Error, "authorisation failed: incorrect token format")
 
 		return false
 	}
 
-	queries := persistence.New(utils.Database)
+	queries := utils.Database.StartQueries()
+	defer utils.Database.EndQueries()
 
 	exists, err := queries.CheckAuthExists(ctx, token)
 	if !exists || err != nil {
@@ -106,8 +95,8 @@ func authorisationWrapper(next http.Handler) http.Handler {
 
 		w.Log(Info, "checking authorisation for path=%s", r.URL.EscapedPath())
 
-		authed := w.Authorise(r.Context(), r.Header)
-		if authed {
+		authed := w.Authorise(r)
+		if !authed {
 			w.PrepareHeader(http.StatusUnauthorized)
 		}
 

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,9 +13,9 @@ import (
 type level interface{ loggerLevelMarker() }
 
 type (
-	debug  struct{ level }
-	info   struct{ level }
-	warn   struct{ level }
+	_debug struct{ level }
+	_info  struct{ level }
+	_warn  struct{ level }
 	_error struct{ level }
 )
 
@@ -24,9 +23,9 @@ type (
 //
 //nolint:gochecknoglobals // These are logging levels and should be global.
 var (
-	Debug = debug{}
-	Info  = info{}
-	Warn  = warn{}
+	Debug = _debug{}
+	Info  = _info{}
+	Warn  = _warn{}
 	Error = _error{}
 )
 
@@ -45,6 +44,7 @@ type LoggingMiddleware struct {
 	requestID         uuid.UUID
 	status            int
 	wroteHeader       bool
+	headerPrepared    bool
 }
 
 var _ middleware = (*LoggingMiddleware)(nil)
@@ -66,6 +66,12 @@ func (l *LoggingMiddleware) PrepareHeader(statusCode int) {
 	}
 
 	l.status = statusCode
+	l.headerPrepared = true
+}
+
+// HeaderPrepared returns whether or not the header has been prepared.
+func (l *LoggingMiddleware) HeaderPrepared() bool {
+	return l.headerPrepared
 }
 
 // WritePreparedHeader writes the previously prepared w.status to the status
@@ -80,7 +86,7 @@ func (l *LoggingMiddleware) WritePreparedHeader() {
 // Subsequent calls to [LoggingMiddleware.WritePreparedHeader] or
 // [LoggingMiddleware.WriteHeader] are superflous and will be ignored.
 func (l *LoggingMiddleware) WriteHeader(statusCode int) {
-	if l.wroteHeader || statusCode == 0 {
+	if l.wroteHeader || statusCode == 0 || l.status == statusCode {
 		return
 	}
 
@@ -90,20 +96,15 @@ func (l *LoggingMiddleware) WriteHeader(statusCode int) {
 }
 
 func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
-	f := "request_id=%v method=%s status=%s path=%s elapsed=%v"
+	f := "request_id=%v method=%s status=%d path=%s elapsed=%v"
 	if format != "" {
 		f = fmt.Sprintf("%s\n\t[%s] msg=%s", f, prefix, format)
-	}
-
-	status := strconv.Itoa(l.status)
-	if l.status == 0 {
-		status = "pending"
 	}
 
 	args := []any{
 		l.requestID.String()[:8],
 		l.associatedRequest.Method,
-		status,
+		l.status,
 		l.associatedRequest.URL.EscapedPath(),
 		time.Since(l.start),
 	}
@@ -112,11 +113,11 @@ func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
 	var logFunc func(string, ...any)
 
 	switch level.(type) {
-	case debug:
+	case _debug:
 		logFunc = slog.Debug
-	case info:
+	case _info:
 		logFunc = slog.Info
-	case warn:
+	case _warn:
 		logFunc = slog.Warn
 	case error:
 		logFunc = slog.Error
@@ -140,8 +141,9 @@ func loggerWrapper(next http.Handler) http.Handler {
 		start := time.Now()
 		wrapped = loggingWrapResponseWriter(w, r, start)
 		next.ServeHTTP(wrapped, r)
-		wrapped.WritePreparedHeader()
 
-		wrapped.Log(Info, "http", "finished handling request")
+		if wrapped.HeaderPrepared() {
+			wrapped.WritePreparedHeader()
+		}
 	})
 }

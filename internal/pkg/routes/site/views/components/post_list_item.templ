@@ -1,13 +1,105 @@
 package components
 
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+import "net/url"
 
-templ PostList(posts []persistence.Post) {
-	if len(posts) == 0 {
+func getSubstring(text string) string {
+	output := text
+	const maxLength = 200
+
+	if len(text) >= maxLength {
+		output = text[:maxLength-3] + "..."
+	}
+
+	return output
+}
+
+func publishedStateClasses(isPublished bool) string {
+	if isPublished {
+		return "badge badge-success badge-soft justify-center mx-auto"
+	} else {
+		return "badge badge-warning badge-soft justify-center mx-auto"
+	}
+}
+
+func publishedState(isPublished bool) string {
+	if isPublished {
+		return "Published"
+	} else {
+		return "Unpublished"
+	}
+}
+
+templ PostList(posts []persistence.Post, showEdit bool) {
+	if !showEdit && len(posts) == 0 {
 		<div>
 			No blog posts (yet...)
 		</div>
 	} else {
-		<div></div>
+		<div class="grid grid-cols-2 justify-center gap-2 min-w-[75%] mx-auto" preload="mouseover" preload-images="true">
+			if showEdit {
+				<button
+					class="btn btn-md btn-info text-info-content col-span-2"
+					hx-target="#body"
+					hx-get="/blog/admin/new-post"
+					hx-push-url="true"
+				>
+					New post
+				</button>
+			}
+			for post := range utils.StreamArray(posts) {
+				@templ.Flush() {
+					{{
+						var uri, editURL string
+						if showEdit {
+							uri = "/blog/admin/preview/" + url.PathEscape(post.Slug)
+							editURL = "/blog/admin/edit/" + post.ID.String()
+						} else {
+							uri = "/blog/post/" + url.PathEscape(post.Slug)
+						}
+					}}
+					<div
+						if !showEdit {
+							hx-get={ uri }
+							hx-push-url={ uri }
+							hx-target="#body"
+						}
+						class="card bg-base-200 hover:bg-base-300 cursor-pointer card-sm shadow-sm"
+					>
+						<div class="card-body">
+							if showEdit {
+								<span class={ publishedStateClasses(post.Published) }>
+									{ publishedState(post.Published) }
+								</span>
+							}
+							<h2 class="card-title">{ post.Content.Title }</h2>
+							<div>
+								<p>Created at: { post.CreatedAt.String() }</p>
+							</div>
+							<div>
+								@templ.Raw(getSubstring(post.Content.Text))
+							</div>
+							if showEdit {
+								<div class="mt-auto card-actions justify-end">
+									<button
+										class="btn btn-sm btn-primary mx-auto"
+										hx-get={ uri }
+										hx-push-url="true"
+										hx-target="#body"
+									>Open</button>
+									<button
+										class="btn btn-sm btn-secondary mx-auto"
+										hx-get={ editURL }
+										hx-push-url="true"
+										hx-target="#body"
+									>Edit</button>
+								</div>
+							}
+						</div>
+					</div>
+				}
+			}
+		</div>
 	}
 }

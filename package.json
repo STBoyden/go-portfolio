@@ -5,7 +5,10 @@
     ]
   },
   "devDependencies": {
+    "alpinejs": "^3.14.9",
     "daisyui": "^5.0.6",
+    "htmx-ext-preload": "^2.1.1",
+    "htmx.org": "^1.9.12",
     "rust-just": "^1.40.0"
   },
   "dependencies": {

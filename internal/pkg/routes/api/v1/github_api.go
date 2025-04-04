@@ -2,10 +2,12 @@ package v1
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/a-h/templ"
 	gh "github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 
@@ -31,8 +33,7 @@ type owner struct {
 }
 
 type repository struct {
-	//nolint:revive,stylecheck // This is a struct to represent a GraphQL object, and as such needs to be named this way.
-	Url         gh.URI
+	URL         gh.URI
 	Name        gh.String
 	Owner       owner
 	Description gh.String
@@ -54,7 +55,7 @@ type pinnedItemsQuery struct {
 }
 
 func GithubAPI() *http.ServeMux {
-	r := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	if !ok {
@@ -65,19 +66,52 @@ func GithubAPI() *http.ServeMux {
 	c := oauth2.NewClient(context.Background(), src)
 	client := gh.NewClient(c)
 
-	r.HandleFunc("/projects", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/projects", func(w http.ResponseWriter, r *http.Request) {
 		input := gh.LanguageOrder{
 			Field:     gh.LanguageOrderFieldSize,
 			Direction: gh.OrderDirectionDesc,
 		}
 
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		type response struct {
+			query *pinnedItemsQuery
+			err   error
+		}
+		responsech := make(chan response)
+
+		go func() {
+			defer close(responsech)
+
+			var query pinnedItemsQuery
+			err := client.Query(ctx, &query, map[string]any{
+				"languagesOrderBy": input,
+			})
+			if err != nil {
+				responsech <- response{query: nil, err: err}
+				return
+			}
+
+			responsech <- response{query: &query, err: nil}
+		}()
+
 		var query pinnedItemsQuery
-		err := client.Query(r.Context(), &query, map[string]any{
-			"languagesOrderBy": input,
-		})
-		if err != nil {
-			fmt.Printf("an error occurred: %v\n", err)
-			return
+	Wait:
+		for {
+			select {
+			case <-ctx.Done():
+				templ.Handler(components.Error(errors.New("timed out"))).ServeHTTP(w, r)
+				return
+			case resp := <-responsech:
+				if resp.err != nil {
+					templ.Handler(components.Error(resp.err)).ServeHTTP(w, r)
+					return
+				}
+
+				query = *resp.query
+				break Wait
+			}
 		}
 
 		repositories := make([]types.Repository, len(query.User.PinnedItems.Nodes))
@@ -88,7 +122,7 @@ func GithubAPI() *http.ServeMux {
 				Owner:       string(entry.Owner.Login),
 				Name:        string(entry.Name),
 				Description: string(entry.Description),
-				URL:         entry.Url.String(),
+				URL:         entry.URL.String(),
 			}
 
 			languages := make([]types.Language, len(entry.Languages.Nodes))
@@ -104,12 +138,11 @@ func GithubAPI() *http.ServeMux {
 			}
 
 			repository.Languages = languages
-
 			repositories[i] = repository
 		}
 
-		_ = components.Repositories(repositories).Render(r.Context(), w)
+		templ.Handler(components.Repositories(repositories), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
-	return r
+	return mux
 }

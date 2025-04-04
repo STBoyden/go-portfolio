@@ -1,5 +1,5 @@
 ARG GO_VERSION=1
-FROM golang:${GO_VERSION}-bookworm as builder
+FROM golang:${GO_VERSION}-bookworm AS builder
 
 WORKDIR /usr/src/app
 RUN apt-get update && apt-get install nodejs npm -y

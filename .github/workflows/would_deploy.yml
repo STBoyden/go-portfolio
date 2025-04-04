@@ -1,11 +1,6 @@
 name: would_deploy
 on:
-  push:
-    branches:
-      - develop
   pull_request:
-    branches:
-      - develop
 
 jobs:
   would_deploy:

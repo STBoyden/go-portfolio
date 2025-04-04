@@ -1,0 +1,112 @@
+package views
+
+import (
+	"errors"
+	"fmt"
+	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
+)
+
+var (
+	errIdWasNull             = errors.New("Given ID was null, assuming that we're creating a new post")
+	errDatabaseQueryTimedOut = errors.New("Database query timed out")
+)
+
+type response struct {
+	post *persistence.Post
+	err  error
+}
+
+func getPostOrDefault(post *persistence.Post) persistence.Post {
+	if post != nil {
+		return *post
+	} else {
+		return persistence.Post{}
+	}
+}
+
+script goBack() {
+	history.back();
+}
+
+func getEndpoint(isEditing bool, post *persistence.Post) templ.SafeURL {
+	if isEditing && post != nil {
+		return templ.SafeURL(fmt.Sprintf("/api/v1/blog/admin/edit/%s", post.ID.String()))
+	} else {
+		return "/api/v1/blog/admin/new-post"
+	}
+}
+
+templ BlogAdminPostEdit(_post *persistence.Post, isEditing bool) {
+	{{
+			post := getPostOrDefault(_post)
+	}}
+	<div x-data={ fmt.Sprintf("{slug: '%s', title: '%s', content: '%s' }", post.Slug, post.Content.Title, post.Content.Text) }>
+		<form
+			method="POST"
+			action={ getEndpoint(isEditing, _post) }
+			class="space-y-4 p-4 card bg-base-200"
+		>
+			<div>
+				<label class="label" for="title">
+					<span class="label-text">Blog Title</span>
+				</label>
+				<input
+					type="text"
+					id="title"
+					name="title"
+					class="input input-bordered"
+					x-model="title"
+					value={ post.Content.Title }
+					required
+				/>
+			</div>
+			<div>
+				<label class="label" for="slug">
+					<span class="label-text">Slug</span>
+				</label>
+				<input
+					type="text"
+					id="slug"
+					name="slug"
+					class="input input-bordered"
+					x-model="slug"
+					value={ post.Slug }
+					if isEditing {
+						disabled
+					}
+					required
+				/>
+			</div>
+			<div class="grid grid-cols-2">
+				<div class="form-control w-full">
+					<label class="label" for="content">
+						<span class="label-text">Blog Content</span>
+					</label>
+					<textarea
+						id="content"
+						name="content"
+						class="textarea textarea-bordered h-64 w-full resize-none"
+						x-model="content"
+						required
+					>{ post.Content.Text }</textarea>
+				</div>
+				<div class="form-control w-full">
+					<label class="label" for="preview">
+						<span class="label-text">Preview</span>
+					</label>
+					<div
+						id="preview"
+						class="prose p-4 bg-base-100 border border-base-300 rounded-box h-64 overflow-auto w-full"
+						x-html="content"
+					></div>
+				</div>
+			</div>
+			<div class="hidden">
+				<input type="password" id="id" x-model="id" value={ post.ID.String() }/>
+			</div>
+			<div class="mt-6">
+				<button type="submit" class="btn btn-primary">Save Post</button>
+			</div>
+		</form>
+	</div>
+}

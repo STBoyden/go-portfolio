@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 )
 
@@ -24,4 +25,15 @@ func MustCast[T any](i any) *T {
 	}
 
 	return casted
+}
+
+// MustEnv asserts that a given environment variable *MUST* be set at runtime,
+// otherwise a panic *WILL* occur.
+func MustEnv(key string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		panic(fmt.Sprintf("MustEnv: %s environment variable not set", key))
+	}
+
+	return value
 }
