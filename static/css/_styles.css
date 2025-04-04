@@ -63,6 +63,12 @@
     @apply mb-2;
 }
 
+#preview > a {
+    @apply hover:underline;
+    @apply hover:italic;
+    @apply text-info;
+}
+
 #preview > pre {
     @apply bg-base-300;
     @apply rounded-lg;
