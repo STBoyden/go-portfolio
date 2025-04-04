@@ -39,37 +39,37 @@
     src: url("/static/fonts/MonaspaceXenon-Bold.woff2") format("woff2");
 }
 
-#preview > h1,
-#preview > h2,
-#preview > h3 {
+#preview h1,
+#preview h2,
+#preview h3 {
     @apply font-bold;
     @apply mb-4;
     font-family: var(--font-header);
 }
 
-#preview > h1 {
+#preview h1 {
     @apply text-xl;
 }
 
-#preview > h2 {
+#preview h2 {
     @apply text-lg;
 }
 
-#preview > h3 {
+#preview h3 {
     @apply text-sm;
 }
 
-#preview > p {
+#preview p {
     @apply mb-2;
 }
 
-#preview > a {
+#preview a {
     @apply hover:underline;
     @apply hover:italic;
     @apply text-accent;
 }
 
-#preview > pre {
+#preview pre {
     @apply bg-base-300;
     @apply rounded-lg;
     @apply p-2;
