@@ -21,6 +21,7 @@ const (
 	idleTimeout       = 15 * time.Second
 )
 
+// main initializes the web server by loading environment variables, running database migrations, establishing a database connection, and setting up HTTP routing with specific timeout configurations. It panics immediately if any critical initialization step fails.
 func main() {
 	_, _ = gotenv.LoadEnvFromFS(fs.EnvFile)
 

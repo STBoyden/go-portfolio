@@ -15,6 +15,11 @@ import (
 
 var ErrDatabaseEnvironmentVariableNotSet = errors.New("DB_URL environment variable not set")
 
+// RunMigrations applies database schema migrations to a PostgreSQL database using the specified migration source.
+// It loads environment variables from a predefined file and checks for the "DB_URL" variable (trimming any surrounding quotes).
+// If "DB_URL" is missing, it returns ErrDatabaseEnvironmentVariableNotSet. It then opens a PostgreSQL driver connection,
+// initializes a migration instance with the given source, and executes the migration using the Up method,
+// returning any errors encountered except for those indicating no changes.
 func RunMigrations(source string) error {
 	env, _ := gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
 
