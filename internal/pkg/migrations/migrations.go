@@ -1,0 +1,49 @@
+package migrations
+
+import (
+	"errors"
+	"log"
+	"strings"
+
+	"github.com/STBoyden/gotenv/v2"
+	"github.com/golang-migrate/migrate/v4"
+	migratePgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/lib/pq" // need the pq driver
+
+	fs "github.com/STBoyden/go-portfolio"
+)
+
+var ErrDatabaseEnvironmentVariableNotSet = errors.New("DB_URL environment variable not set")
+
+func RunMigrations(source string) error {
+	env, _ := gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
+
+	var dbURL string
+	var ok bool
+	if dbURL, ok = env["DB_URL"]; !ok {
+		return ErrDatabaseEnvironmentVariableNotSet
+	}
+
+	dbURL = strings.Trim(dbURL, "\"")
+
+	p := &migratePgx.Postgres{}
+	driver, err := p.Open(dbURL)
+	if err != nil {
+		return err
+	}
+	defer driver.Close()
+
+	migrations, err := migrate.NewWithDatabaseInstance(source, "pgx", driver)
+	if err != nil {
+		return err
+	}
+
+	err = migrations.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+
+	log.Print("Migrations ran successfully or no change")
+
+	return nil
+}
