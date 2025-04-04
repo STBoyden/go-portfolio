@@ -12,11 +12,15 @@ func yesOrNo(isPublished bool) string {
 }
 
 templ BlogPost(post persistence.Post, showAdminInformation bool) {
-	<div class="w-[65%] my-2 mx-auto">
-		@components.Title(post.Content.Title)
+	<div class="lg:w-[65%] my-2 mx-auto">
+		@components.Title(post.Content.Title, "text-center", "lg:text-left")
 		//
 		<div class="mt-2 mb-4">
-			<p>Created: { post.CreatedAt.String() }</p>
+			<p class="[display:none] lg:[display:unset]">Created: { post.CreatedAt.String() }</p>
+			<div class="[display:unset] lg:[display:none] text-center">
+				<p>Created:</p>
+				<p>{ post.CreatedAt.String() }</p>
+			</div>
 			if showAdminInformation {
 				<script>
 					document.body.addEventListener("reload", () => {
@@ -39,7 +43,7 @@ templ BlogPost(post persistence.Post, showAdminInformation bool) {
 			}
 		</div>
 		//
-		<div id="preview">
+		<div id="preview" class="mt-8">
 			@templ.Raw(post.Content.Text)
 		</div>
 	</div>

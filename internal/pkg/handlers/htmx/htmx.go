@@ -25,6 +25,8 @@ func Handler(component templ.Component, options ...func(*templ.ComponentHandler)
 			render = views.Root(component)
 		}
 
+		w.Header().Add("Hx-Trigger", "close-nav-menu")
+
 		templ.Handler(render, options...).ServeHTTP(w, r)
 	})
 }

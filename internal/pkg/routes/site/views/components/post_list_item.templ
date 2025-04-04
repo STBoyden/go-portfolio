@@ -37,10 +37,14 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 			No blog posts (yet...)
 		</div>
 	} else {
-		<div class="grid grid-cols-2 justify-center gap-2 min-w-[75%] mx-auto" preload="mouseover" preload-images="true">
+		<div
+			class="grid grid-cols-1 lg:grid-cols-2 justify-center gap-2 min-w-[75%] mx-auto"
+			preload="mouseover"
+			preload-images="true"
+		>
 			if showEdit {
 				<button
-					class="btn btn-md btn-info text-info-content col-span-2"
+					class="btn btn-md btn-info text-info-content col-span-1 lg:col-span-2"
 					hx-target="#body"
 					hx-get="/blog/admin/new-post"
 					hx-push-url="true"

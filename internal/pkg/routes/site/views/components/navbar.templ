@@ -34,9 +34,14 @@ templ links() {
 }
 
 templ Navbar() {
-	<div class="navbar bg-base-300 shadow-md lg:mx-auto lg:mt-2 lg:max-w-[75%] text-center">
+	<div class="navbar bg-base-300 shadow-md lg:mx-auto lg:mt-2 lg:max-w-[75%] text-center" x-data="{ open: false }" id="navbar">
 		<div class="navbar-start">
-			<div class="dropdown sm:[display:none]">
+			<div
+				class="dropdown sm:[display:none]"
+				x-on:click="open = !open"
+				x-on:close-nav-menu="open = false"
+				x-on:click.outside="open = false"
+			>
 				<div tabindex="0" role="button" class="btn btn-ghost btn-circle">
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path> </svg>
 				</div>
@@ -45,11 +50,17 @@ templ Navbar() {
 					hx-boost="true"
 					class="menu menu-sm dropdown-content bg-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
 					preload
+					x-show="open"
 				>
 					@links()
 				</ul>
 			</div>
-			<a class="btn btn-ghost text-xl">Samuel Boyden</a>
+			<button
+				class="btn btn-ghost text-xl"
+				hx-get="/"
+				hx-swap="innerHTML"
+				hx-target="#body"
+			>Samuel Boyden</button>
 		</div>
 		<div class="[display:none] sm:navbar-center">
 			<ul
