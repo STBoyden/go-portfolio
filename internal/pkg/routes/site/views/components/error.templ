@@ -3,5 +3,11 @@ package components
 import "fmt"
 
 templ Error(err error) {
-	<div class="bg-warning text-warning-content">{ fmt.Sprintf("An error occurred: %v", err.Error()) }</div>
+	<div class="bg-warning text-warning-content">
+		if err == nil {
+			{ "An error occurred: Unknown error" }
+		} else {
+			{ fmt.Sprintf("An error occurred: %v", err.Error()) }
+		}
+	</div>
 }

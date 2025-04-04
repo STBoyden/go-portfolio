@@ -40,8 +40,8 @@
 }
 
 #preview > h1,
-h2,
-h3 {
+#preview > h2,
+#preview > h3 {
     @apply font-bold;
     @apply mb-4;
     font-family: var(--font-header);

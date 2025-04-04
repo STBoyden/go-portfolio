@@ -57,5 +57,5 @@ func ConnectDB() {
 	db := Must(pgx.Connect(connectionContext, url))
 	queries := persistence.New(db)
 
-	Database = &appDatabase{Conn: db, queries: queries, Context: connectionContext}
+	Database = &appDatabase{Conn: db, queries: queries}
 }
