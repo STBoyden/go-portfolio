@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -40,8 +41,9 @@ func (a AuthMiddleware) Authed() bool {
 }
 
 // Wrapper over [LoggingMiddleware.Log] to standardise the prefix.
-func (a AuthMiddleware) Log(level level, format string, v ...any) {
-	a.LoggingMiddleware.Log(level, "auth", format, v...)
+func (a AuthMiddleware) Log(level LoggerLevel, message string, attrs ...any) {
+	group := slog.Group("auth", attrs...)
+	a.LoggingMiddleware.Log(level, message, group)
 }
 
 func (a *AuthMiddleware) Authorise(r *http.Request) bool {
@@ -49,37 +51,42 @@ func (a *AuthMiddleware) Authorise(r *http.Request) bool {
 
 	cookie, err := r.Cookie(consts.TokenCookieName)
 	if err != nil {
-		a.Log(Error, "authorisation failed: missing cookie")
+		a.Log(Error, "Authorisation failed: missing cookie")
 
 		return false
 	}
 
 	token, err := uuid.Parse(cookie.Value)
 	if err != nil {
-		a.Log(Error, "authorisation failed: incorrect token format")
+		a.Log(Error, "Authorisation failed: incorrect token format")
 
 		return false
 	}
 
-	queries := utils.Database.StartQueries()
-	defer utils.Database.EndQueries()
+	queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+	if err != nil {
+		panic("unable to start transaction on database: " + err.Error())
+	}
+	defer rollback(r.Context())
 
 	exists, err := queries.CheckAuthExists(ctx, token)
 	if !exists || err != nil {
-		a.Log(Error, "authorisation failed: token %v does not exist in database", token)
+		a.Log(Error, "Authorisation failed: token does not exist in database", "token", token)
 
 		return false
 	}
 
 	expired, err := queries.CheckIfAuthExpired(ctx, token)
 	if expired || err != nil {
-		a.Log(Error, "authorisation failed: token %v's authorisation has expired", token)
+		a.Log(Error, "Authorisation failed: token's authorisation has expired", "token", token)
 
 		return false
 	}
 
 	a.token = token
 	a.authed = true
+
+	_ = commit(r.Context())
 
 	return true
 }
@@ -93,12 +100,12 @@ func authorisationWrapper(next http.Handler) http.Handler {
 		_w := utils.MustCast[LoggingMiddleware](__w)
 		w := authWrapResponseWriter(_w)
 
-		w.Log(Info, "checking authorisation for path=%s", r.URL.EscapedPath())
-
 		authed := w.Authorise(r)
 		if !authed {
 			w.PrepareHeader(http.StatusUnauthorized)
 		}
+
+		w.Log(Info, "Checking authorisation for path", "authorised", authed)
 
 		next.ServeHTTP(w, r)
 	})

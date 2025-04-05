@@ -3,13 +3,17 @@ package components
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 import "net/url"
+import "regexp"
+import "strings"
+
+var normaliseRegexp = regexp.MustCompile(`(<br\/?>|<\/?a[^<]*>)`)
 
 func getSubstring(text string) string {
-	output := text
-	const maxLength = 200
+	output := normaliseRegexp.ReplaceAllString(strings.TrimSpace(text), " ")
 
-	if len(text) >= maxLength {
-		output = text[:maxLength-3] + "..."
+	const maxLength = 50
+	if len(output) >= maxLength {
+		output = output[:maxLength-3] + "..."
 	}
 
 	return output
@@ -82,7 +86,7 @@ templ PostList(posts []persistence.Post, showEdit bool) {
 								<p>Created at: { post.CreatedAt.String() }</p>
 							</div>
 							<div>
-								@templ.Raw(getSubstring(post.Content.Text))
+								{ getSubstring(post.Content.Text) }
 							</div>
 							if showEdit {
 								<div class="mt-auto card-actions justify-end">

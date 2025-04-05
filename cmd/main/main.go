@@ -1,13 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"context"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/STBoyden/gotenv/v2"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
 
 	fs "github.com/STBoyden/go-portfolio"
 	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
@@ -23,28 +27,50 @@ const (
 
 func main() {
 	_, _ = gotenv.LoadEnvFromFS(fs.EnvFile, gotenv.LoadOptions{OverrideExistingVars: false})
+
+	var level slog.Level
+	switch os.Getenv("LOG_LEVEL") {
+	case "DEBUG":
+		level = slog.LevelDebug
+	case "WARN":
+		level = slog.LevelWarn
+	case "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	w := os.Stderr
+	logger := slog.New(tint.NewHandler(colorable.NewColorable(w), &tint.Options{
+		TimeFormat: time.DateTime + " MST (-0700)",
+		Level:      level,
+		NoColor:    !isatty.IsTerminal(w.Fd()),
+	}))
+	slog.SetDefault(logger)
+
 	dbURL := utils.MustEnv("DB_URL")
 
 	d, err := iofs.New(fs.MigrationsFS, "migrations")
 	if err != nil {
-		panic("could not get migrations:" + err.Error())
+		logger.Error("could not get migrations", "err", err)
+		return
 	}
 
 	err = migrations.RunMigrations(dbURL, "iofs", d)
 	if err != nil {
-		panic("couldn't run migrations on database" + err.Error())
+		logger.Error("could not run migrations on database", "err", err)
+		return
 	}
 
 	utils.ConnectDB()
-	defer utils.Database.Close(utils.Database.Context)
+	defer utils.Database.Close(context.Background())
 
 	mux := http.NewServeMux()
 
 	// Forward all endpoints to routes.Router()
 	mux.Handle("/", routes.Router(fs.StaticFS))
 
-	log.Println("Serving http://localhost:8080...")
-
+	logger.Info("Serving http://localhost:8080...")
 	server := &http.Server{
 		Addr:              ":8080",
 		Handler:           mux,
@@ -55,6 +81,7 @@ func main() {
 
 	err = server.ListenAndServe()
 	if err != nil {
-		panic(fmt.Sprintf("could not listen and serve to :8080: %v", err))
+		logger.Error("Could not listen and serve to :8080", "err", err)
+		return
 	}
 }

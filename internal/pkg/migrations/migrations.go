@@ -2,7 +2,7 @@ package migrations
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	migratePgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -35,7 +35,7 @@ func RunMigrations(dbURL, sourceName string, sourceInstance source.Driver) error
 		return err
 	}
 
-	log.Print("Migrations ran successfully or no change")
+	slog.Default().Debug("Migrations ran successfully or no change")
 
 	return nil
 }

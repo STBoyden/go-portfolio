@@ -2,49 +2,89 @@ package utils
 
 import (
 	"context"
-	"sync"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 )
 
-type appDatabase struct {
-	mu sync.Mutex
-	*pgx.Conn
-	context.Context
+// ReadOnlyQueries contains queries that only read from the database.
+type ReadOnlyQueries interface {
+	CheckAuthExists(ctx context.Context, id uuid.UUID) (bool, error)
+	CheckIfAuthExpired(ctx context.Context, id uuid.UUID) (bool, error)
+	GetAuthByToken(ctx context.Context, id uuid.UUID) (persistence.Authorisation, error)
+	GetExpiredAuths(ctx context.Context) ([]persistence.Authorisation, error)
 
-	querying bool
-	queries  *persistence.Queries
+	GetAllPosts(ctx context.Context) ([]persistence.Post, error)
+	GetPostByID(ctx context.Context, id uuid.UUID) (persistence.Post, error)
+	GetPostBySlug(ctx context.Context, slug string) (persistence.Post, error)
+	GetPublishedPostBySlug(ctx context.Context, slug string) (persistence.Post, error)
+	GetPublishedPosts(ctx context.Context) ([]persistence.Post, error)
 }
 
-func (a *appDatabase) NewTransaction(ctx context.Context) (*persistence.Queries, pgx.Tx, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+var _ ReadOnlyQueries = (*persistence.Queries)(nil)
 
-	tx, err := a.Conn.BeginTx(ctx, pgx.TxOptions{})
+// AppDatabase.
+type AppDatabase struct {
+	conn    *pgx.Conn
+	queries *persistence.Queries
+}
+
+type (
+	CommitFunc   func(context.Context) error
+	RollbackFunc func(context.Context)
+)
+
+func (a *AppDatabase) rollbackBuilder(tx pgx.Tx) RollbackFunc {
+	return func(ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}
+}
+
+func (a *AppDatabase) commitBuilder(tx pgx.Tx) CommitFunc {
+	return func(ctx context.Context) error {
+		return tx.Commit(ctx)
+	}
+}
+
+// StartWriteTx starts a new transaction and locks writes and reads until
+// done. Nested transactions are not supported.
+//
+// This function returns four values: a [persistence.Queries] value that has
+// been wrapped in a transaction, a [CommitFunc] and [RollbackFunc] that are
+// used to commit and rollback changes accordingly, and finally an error value
+// that if not nil, means all other values *are* nil.
+func (a *AppDatabase) StartWriteTx(ctx context.Context) (*persistence.Queries, CommitFunc, RollbackFunc, error) {
+	tx, err := a.conn.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return a.queries.WithTx(tx), tx, nil
+	return a.queries.WithTx(tx), a.commitBuilder(tx), a.rollbackBuilder(tx), nil
 }
 
-func (a *appDatabase) StartQueries() *persistence.Queries {
-	a.mu.Lock()
-	a.querying = true
-	return a.queries
-}
-
-func (a *appDatabase) EndQueries() {
-	if a.querying {
-		a.querying = false
-		a.mu.Unlock()
+// StartReadTx starts a read from the database. This function starts a read
+// lock on the database, and multiple goroutines can call this function at the
+// same time without blocking, however this function will block if there's an
+// active write on the database from [NewTransaction].
+func (a *AppDatabase) StartReadTx(ctx context.Context) (ReadOnlyQueries, CommitFunc, RollbackFunc, error) {
+	tx, err := a.conn.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, nil, nil, err
 	}
+
+	return a.queries.WithTx(tx), a.commitBuilder(tx), a.rollbackBuilder(tx), nil
+}
+
+// Close closes the connection to the database. See [pgx.Conn.Close] for more
+// information.
+func (a *AppDatabase) Close(ctx context.Context) error {
+	return a.conn.Close(ctx)
 }
 
 //nolint:gochecknoglobals // This is a global variable that is used to store the database connection.
-var Database *appDatabase
+var Database *AppDatabase
 
 func ConnectDB() {
 	if Database != nil {
@@ -57,5 +97,5 @@ func ConnectDB() {
 	db := Must(pgx.Connect(connectionContext, url))
 	queries := persistence.New(db)
 
-	Database = &appDatabase{Conn: db, queries: queries}
+	Database = &AppDatabase{conn: db, queries: queries}
 }

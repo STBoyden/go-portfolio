@@ -1,22 +1,20 @@
 package middleware
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type level interface{ loggerLevelMarker() }
+type LoggerLevel interface{ loggerLevelMarker() }
 
 type (
-	_debug struct{ level }
-	_info  struct{ level }
-	_warn  struct{ level }
-	_error struct{ level }
+	_debug struct{ LoggerLevel }
+	_info  struct{ LoggerLevel }
+	_warn  struct{ LoggerLevel }
+	_error struct{ LoggerLevel }
 )
 
 // Global logging levels for the Logging middleware.
@@ -95,37 +93,30 @@ func (l *LoggingMiddleware) WriteHeader(statusCode int) {
 	l.wroteHeader = true
 }
 
-func (l *LoggingMiddleware) Log(level level, prefix, format string, v ...any) {
-	f := "request_id=%v method=%s status=%d path=%s elapsed=%v"
-	if format != "" {
-		f = fmt.Sprintf("%s\n\t[%s] msg=%s", f, prefix, format)
-	}
+func (l *LoggingMiddleware) Log(level LoggerLevel, message string, attrs ...any) {
+	attributes := append([]any{slog.Group("request",
+		"id", l.requestID.String()[:8],
+		"method", l.associatedRequest.Method,
+		"status", l.status,
+		"path", l.associatedRequest.URL.Path,
+		"elapsed", time.Since(l.start),
+	)}, attrs...)
 
-	args := []any{
-		l.requestID.String()[:8],
-		l.associatedRequest.Method,
-		l.status,
-		l.associatedRequest.URL.EscapedPath(),
-		time.Since(l.start),
-	}
-	args = slices.Concat(args, v)
+	logger := slog.Default()
 
-	var logFunc func(string, ...any)
-
+	var f func(string, ...any)
 	switch level.(type) {
 	case _debug:
-		logFunc = slog.Debug
-	case _info:
-		logFunc = slog.Info
+		f = logger.Debug
 	case _warn:
-		logFunc = slog.Warn
-	case error:
-		logFunc = slog.Error
+		f = logger.Warn
+	case _error:
+		f = logger.Error
 	default:
-		logFunc = slog.Info
+		f = logger.Info
 	}
 
-	logFunc(fmt.Sprintf(f, args...))
+	f(message, attributes...)
 }
 
 func loggerWrapper(next http.Handler) http.Handler {
@@ -134,12 +125,14 @@ func loggerWrapper(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				wrapped.WriteHeader(http.StatusInternalServerError)
-				wrapped.Log(Error, "http", "an internal server error occurred. cause: %v", err)
+				wrapped.Log(Error, "An internal server error occurred", "cause", err)
 			}
 		}()
 
 		start := time.Now()
 		wrapped = loggingWrapResponseWriter(w, r, start)
+
+		wrapped.Log(Debug, "Request received", "received_at", start)
 		next.ServeHTTP(wrapped, r)
 
 		if wrapped.HeaderPrepared() {

@@ -2,6 +2,7 @@
 package site
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -14,17 +15,18 @@ import (
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
 )
 
-const siteLogTag string = "site"
+func siteLog(logger *middleware.LoggingMiddleware, level middleware.LoggerLevel, message string, v ...any) {
+	logger.Log(level, message, slog.Group("site", v...))
+}
 
 func needAuthRoutes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/new-post", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
-		log := w.LoggingMiddleware.Log
 
 		if !w.Authed() {
-			log(middleware.Info, siteLogTag, "user is not authorised")
+			siteLog(w.LoggingMiddleware, middleware.Info, "User is not authorised")
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
@@ -34,60 +36,68 @@ func needAuthRoutes() http.Handler {
 
 	mux.HandleFunc("/edit/{id}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
-		log := w.LoggingMiddleware.Log
 
 		if !w.Authed() {
-			log(middleware.Info, siteLogTag, "user is not authorised")
+			siteLog(w.LoggingMiddleware, middleware.Info, "User is not authorised")
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
 
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			log(middleware.Info, siteLogTag, "user did not provide valid uuid")
+			siteLog(w.LoggingMiddleware, middleware.Info, "User did not provide valid uuid")
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
 
-		queries := utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
 		post, err := queries.GetPostByID(r.Context(), id)
 		if err != nil {
-			log(middleware.Info, siteLogTag, "ID '%v' did not exist in database", id)
+			siteLog(w.LoggingMiddleware, middleware.Info, "ID did not exist in database", "id", id)
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
+
+		_ = commit(r.Context())
 
 		htmx.Handler(views.BlogAdminPostEdit(&post, true), templ.WithStreaming()).ServeHTTP(w, r)
 	})
 
 	mux.HandleFunc("GET /preview/{slug}", func(_w http.ResponseWriter, r *http.Request) {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
-		log := w.LoggingMiddleware.Log
 
 		if !w.Authed() {
-			log(middleware.Info, siteLogTag, "user is not authorised")
+			siteLog(w.LoggingMiddleware, middleware.Info, "User is not authorised")
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
 
 		slug := r.PathValue("slug")
 		if slug == "" {
-			log(middleware.Info, siteLogTag, "slug not provided")
+			siteLog(w.LoggingMiddleware, middleware.Info, "Slug not provided")
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
 
-		queries := utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
 		post, err := queries.GetPostBySlug(r.Context(), slug)
 		if err != nil {
-			log(middleware.Info, siteLogTag, "post with given slug could not be found: %v", err)
+			siteLog(w.LoggingMiddleware, middleware.Info, "Post with given slug could not be found", "error", err)
 			http.Redirect(w, r, "/blog/admin", http.StatusSeeOther)
 			return
 		}
+
+		_ = commit(r.Context())
 
 		htmx.Handler(views.BlogPost(post, true)).ServeHTTP(w, r)
 	})
@@ -107,20 +117,25 @@ func Router() *http.ServeMux {
 
 		slug := r.PathValue("slug")
 		if slug == "" {
-			w.Log(middleware.Info, "http", "slug path value was invalid")
+			w.Log(middleware.Info, "Slug path value was invalid")
 			http.NotFound(w, r)
 			return
 		}
 
-		queries := utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
 		post, err := queries.GetPublishedPostBySlug(r.Context(), slug)
 		if err != nil {
-			w.Log(middleware.Info, "http", "could not get post: %v", err)
+			w.Log(middleware.Info, "Could not get post", "error", err)
 			http.NotFound(w, r)
 			return
 		}
+
+		_ = commit(r.Context())
 
 		htmx.Handler(views.BlogPost(post, false)).ServeHTTP(w, r)
 	})
@@ -132,18 +147,18 @@ func Router() *http.ServeMux {
 
 		cookie, err := r.Cookie(consts.TokenCookieName)
 		if err != nil {
-			w.Log(middleware.Info, siteLogTag, "token cookie missing from request")
+			siteLog(w, middleware.Info, "Token cookie missing from request")
 			templ.Handler(component).ServeHTTP(w, r)
 			return
 		} else if err = cookie.Valid(); err != nil {
-			w.Log(middleware.Info, siteLogTag, "cookie is invalid: %v", err)
+			siteLog(w, middleware.Info, "Cookie is invalid", "error", err)
 			templ.Handler(component).ServeHTTP(w, r)
 			return
 		}
 
 		request, err := http.NewRequest(http.MethodPost, "http://0.0.0.0:8080/api/v1/blog/check-authentication", nil)
 		if err != nil {
-			w.Log(middleware.Info, siteLogTag, "could not check that request was authenticated properly: %v", err)
+			siteLog(w, middleware.Info, "Could not check that request was authenticated properly", "error", err)
 			templ.Handler(component).ServeHTTP(w, r)
 			return
 		}
@@ -153,7 +168,7 @@ func Router() *http.ServeMux {
 
 		response, err := client.Do(request)
 		if err != nil {
-			w.Log(middleware.Info, siteLogTag, "could not check that request was authenticated properly: %v", err)
+			siteLog(w, middleware.Info, "Could not check that request was authenticated properly", "error", err)
 			templ.Handler(component).ServeHTTP(w, r)
 			return
 		}
@@ -161,7 +176,7 @@ func Router() *http.ServeMux {
 
 		showExpirationWarning := response.StatusCode == http.StatusAccepted
 		if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusAccepted {
-			w.Log(middleware.Info, siteLogTag, "token is not authorised")
+			siteLog(w, middleware.Info, "Token is not authorised")
 			templ.Handler(component).ServeHTTP(w, r)
 			return
 		}
