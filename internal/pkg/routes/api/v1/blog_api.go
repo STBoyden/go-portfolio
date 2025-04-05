@@ -46,11 +46,11 @@ func cleanSlug(slug string) string {
 const blogAuthLogTag string = "blog-auth"
 
 func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
-	queries, tx, err := utils.Database.NewTransaction(ctx)
+	queries, commit, rollback, err := utils.Database.StartWriteTx(ctx)
 	if err != nil {
 		panic(fmt.Sprintf("could not start new transaction: %v", err))
 	}
-	defer tx.Rollback(ctx)
+	defer rollback(ctx)
 
 	rowsUpdated, err := queries.PublishPost(ctx, id)
 	if err != nil {
@@ -58,22 +58,22 @@ func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) er
 	}
 
 	if rowsUpdated == 0 {
-		w.Log(middleware.Info, "post with ID '%v' already published", id)
+		w.Log(middleware.Info, "Post already published", "id", id)
 	} else {
-		w.Log(middleware.Info, "post with ID '%v' published", id)
+		w.Log(middleware.Info, "post published", "id", id)
 	}
 
 	w.Header().Add("Hx-Trigger", "reload")
 
-	return tx.Commit(ctx)
+	return commit(ctx)
 }
 
 func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
-	queries, tx, err := utils.Database.NewTransaction(ctx)
+	queries, commit, rollback, err := utils.Database.StartWriteTx(ctx)
 	if err != nil {
 		panic(fmt.Sprintf("could not start new transaction: %v", err))
 	}
-	defer tx.Rollback(ctx)
+	defer rollback(ctx)
 
 	rowsUpdated, err := queries.UnpublishPost(ctx, id)
 	if err != nil {
@@ -81,14 +81,14 @@ func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) 
 	}
 
 	if rowsUpdated == 0 {
-		w.Log(middleware.Info, "post with ID '%v' already unpublished", id)
+		w.Log(middleware.Info, "Post already unpublished", "id")
 	} else {
-		w.Log(middleware.Info, "post with ID '%v' unpublished", id)
+		w.Log(middleware.Info, "Post unpublished", "id", id)
 	}
 
 	w.Header().Add("Hx-Trigger", "reload")
 
-	return tx.Commit(ctx)
+	return commit(ctx)
 }
 
 func blogAdmin() *http.ServeMux {
@@ -98,13 +98,13 @@ func blogAdmin() *http.ServeMux {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if err := r.ParseForm(); err != nil {
-			w.Log(middleware.Info, "form not submitted correctly: %v", err)
+			w.Log(middleware.Info, "Form not submitted correctly", "error", err)
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
 		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to create a new post")
+			w.Log(middleware.Info, "User is not authorised to create a new post")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
@@ -113,7 +113,7 @@ func blogAdmin() *http.ServeMux {
 		slug := r.PostFormValue("slug")
 		content := r.PostFormValue("content")
 		if title == "" || slug == "" || content == "" {
-			w.Log(middleware.Info, "form content is invalid")
+			w.Log(middleware.Info, "Form content is invalid")
 		}
 
 		slug = cleanSlug(slug)
@@ -127,11 +127,11 @@ func blogAdmin() *http.ServeMux {
 			panic(fmt.Sprintf("unable to marshal blog content: %v", err))
 		}
 
-		queries, tx, err := utils.Database.NewTransaction(r.Context())
+		queries, commit, rollback, err := utils.Database.StartWriteTx(r.Context())
 		if err != nil {
 			panic(fmt.Sprintf("could not start transaction: %v", err))
 		}
-		defer tx.Rollback(r.Context())
+		defer rollback(r.Context())
 
 		post, err := queries.CreatePost(r.Context(), persistence.CreatePostParams{
 			Slug:    slug,
@@ -140,7 +140,7 @@ func blogAdmin() *http.ServeMux {
 		if err != nil {
 			panic(fmt.Sprintf("was unable to insert a new post: %v", err))
 		}
-		_ = tx.Commit(r.Context())
+		_ = commit(r.Context())
 
 		http.Redirect(w, r, "/blog/admin/preview/"+url.PathEscape(post.Slug), http.StatusFound)
 	})
@@ -149,13 +149,13 @@ func blogAdmin() *http.ServeMux {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if err := r.ParseForm(); err != nil {
-			w.Log(middleware.Info, "form not submitted correctly: %v", err)
+			w.Log(middleware.Info, "Form not submitted correctly", "error", err)
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
 		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to edit post")
+			w.Log(middleware.Info, "User is not authorised to edit post")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
@@ -163,14 +163,14 @@ func blogAdmin() *http.ServeMux {
 		content := r.PostFormValue("content")
 		title := r.PostFormValue("title")
 		if title == "" || content == "" {
-			w.Log(middleware.Info, "form content is invalid")
+			w.Log(middleware.Info, "Form content is invalid")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
 
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.Log(middleware.Info, "id value is invalid")
+			w.Log(middleware.Info, "ID value is invalid", "invalid_id", id)
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -181,11 +181,11 @@ func blogAdmin() *http.ServeMux {
 			panic(fmt.Sprintf("unable to marshal blog content: %v", err))
 		}
 
-		queries, tx, err := utils.Database.NewTransaction(r.Context())
+		queries, commit, rollback, err := utils.Database.StartWriteTx(r.Context())
 		if err != nil {
 			panic(fmt.Sprintf("unable to start transaction: %v", err))
 		}
-		defer tx.Rollback(r.Context())
+		defer rollback(r.Context())
 
 		rowsUpdated, err := queries.EditPost(r.Context(), persistence.EditPostParams{
 			Content: contentBuffer,
@@ -195,21 +195,26 @@ func blogAdmin() *http.ServeMux {
 			panic(fmt.Sprintf("unable to edit post: %v", err))
 		}
 
-		_ = tx.Commit(r.Context())
+		_ = commit(r.Context())
 
 		if rowsUpdated == 0 {
-			w.Log(middleware.Info, "post could not be updated for unknown reasons: %v", id)
+			w.Log(middleware.Info, "Post could not be updated for unknown reasons", "id", id)
 		} else {
-			w.Log(middleware.Info, "post with ID '%v' updated", id)
+			w.Log(middleware.Info, "Post updated", "id", id)
 		}
 
-		queries = utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		roQueries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
-		post, err := queries.GetPostByID(r.Context(), id)
+		post, err := roQueries.GetPostByID(r.Context(), id)
 		if err != nil {
 			panic(fmt.Sprintf("could not get post that was previously updated??: %v", err))
 		}
+
+		_ = commit(r.Context())
 
 		http.Redirect(w, r, "/blog/admin/preview/"+post.Slug, http.StatusFound)
 	})
@@ -218,14 +223,14 @@ func blogAdmin() *http.ServeMux {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to publish posts")
+			w.Log(middleware.Info, "User is not authorised to publish posts")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.Log(middleware.Info, "invalid id provided")
+			w.Log(middleware.Info, "Invalid ID provided")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -240,14 +245,14 @@ func blogAdmin() *http.ServeMux {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to unpublish posts")
+			w.Log(middleware.Info, "User is not authorised to unpublish posts")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.Log(middleware.Info, "invalid id provided")
+			w.Log(middleware.Info, "Invalid ID provided")
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
@@ -262,13 +267,16 @@ func blogAdmin() *http.ServeMux {
 		w := utils.MustCast[middleware.AuthMiddleware](_w)
 
 		if _, authed := w.Details(); !authed {
-			w.Log(middleware.Info, "user is not authorised to get unpublished posts")
+			w.Log(middleware.Info, "User is not authorised to get unpublished posts")
 			w.PrepareHeader(http.StatusUnauthorized)
 			return
 		}
 
-		queries := utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
 		posts, err := queries.GetAllPosts(r.Context())
 
@@ -276,6 +284,8 @@ func blogAdmin() *http.ServeMux {
 		if err != nil {
 			component = components.Error(err)
 		}
+
+		_ = commit(r.Context())
 
 		templ.Handler(component, templ.WithStreaming()).ServeHTTP(w, r)
 	})
@@ -290,31 +300,33 @@ func checkAuthentication(_w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie(consts.TokenCookieName)
 	if err != nil {
-		w.Log(middleware.Info, blogAuthLogTag, "token cookie was missing from client request")
+		w.Log(middleware.Info, "Token cookie was missing from client request")
 		w.PrepareHeader(http.StatusUnauthorized)
 		return
 	}
 
 	token, err := uuid.Parse(cookie.Value)
 	if err != nil {
-		w.Log(middleware.Info, blogAuthLogTag, "token form cookie was invalid")
+		w.Log(middleware.Info, "Token form cookie was invalid")
 		w.PrepareHeader(http.StatusUnauthorized)
 		return
 	}
 
-	queries := utils.Database.StartQueries()
-	authorisation, err := queries.GetAuthByToken(r.Context(), token)
-
-	utils.Database.EndQueries()
-
+	queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
 	if err != nil {
-		w.Log(middleware.Warn, blogAuthLogTag, "internal error occurred: de-authing user just in case: could not get authorisation token: %v", err)
+		panic("unable to start transaction on database: " + err.Error())
+	}
+	defer rollback(r.Context())
+
+	authorisation, err := queries.GetAuthByToken(r.Context(), token)
+	if err != nil {
+		w.Log(middleware.Warn, "Internal error occurred: de-authing user just in case: could not get authorisation token", "error", err)
 		w.PrepareHeader(http.StatusUnauthorized)
 		return
 	}
 
 	if authorisation.Expiry.Before(time.Now()) {
-		w.Log(middleware.Info, blogAuthLogTag, "token associated with request has expired")
+		w.Log(middleware.Info, "Token associated with request has expired")
 		w.PrepareHeader(http.StatusUnauthorized)
 		return
 	} else if authorisation.Expiry.Before(time.Now().Add(30 * time.Minute)) {
@@ -322,6 +334,8 @@ func checkAuthentication(_w http.ResponseWriter, r *http.Request) {
 		// status code so that the front-end may warn the user.
 		w.PrepareHeader(http.StatusAccepted)
 	}
+
+	_ = commit(r.Context())
 }
 
 // authenticate creates a new authentication for a user if they have provided
@@ -336,21 +350,21 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 
 	headerContent, ok := r.Header["Authorization"]
 	if !ok {
-		w.Log(middleware.Info, blogAuthLogTag, "authorization header missing")
+		w.Log(middleware.Info, "Authorization header missing")
 		onError(errMissingAuthorization, http.StatusBadRequest)
 		return
 	}
 
 	authorisation := strings.Join(headerContent, " ")
 	if authorisation == "" {
-		w.Log(middleware.Info, blogAuthLogTag, "authorization header content is empty")
+		w.Log(middleware.Info, "Authorization header content is empty")
 		onError(errInvalidAuthorizationContent, http.StatusBadRequest)
 		return
 	}
 
 	username, password, ok := r.BasicAuth()
 	if username == "" || password == "" || !ok {
-		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password are empty")
+		w.Log(middleware.Info, "Given username and/or password are empty")
 		onError(errInvalidAuthorizationContent, http.StatusBadRequest)
 		return
 	}
@@ -359,23 +373,23 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 	passwordHashed := hex.EncodeToString(h[:])
 
 	if username != adminUsername || passwordHashed != adminPassword {
-		w.Log(middleware.Info, blogAuthLogTag, "given username and/or password hash does not match administrator details")
+		w.Log(middleware.Info, "Given username and/or password hash does not match administrator details")
 		onError(errIncorrectCredentials, http.StatusUnauthorized)
 		return
 	}
 
-	queries, tx, err := utils.Database.NewTransaction(r.Context())
+	queries, commit, rollback, err := utils.Database.StartWriteTx(r.Context())
 	if err != nil {
 		panic(fmt.Sprintf("unable to start transaction: %v", err))
 	}
-	defer tx.Rollback(r.Context())
+	defer rollback(r.Context())
 
 	auth, err := queries.NewAuth(r.Context())
 	if err != nil {
 		panic(fmt.Sprintf("unable to create a new token: %v", err))
 	}
 
-	_ = tx.Commit(r.Context())
+	_ = commit(r.Context())
 
 	w.Header().Add("Hx-Trigger", "login-page-reload")
 	http.SetCookie(w, &http.Cookie{
@@ -388,7 +402,7 @@ func authenticate(_w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.Log(middleware.Info, blogAuthLogTag, "setting cookie %s", consts.TokenCookieName)
+	w.Log(middleware.Info, "Setting cookie "+consts.TokenCookieName)
 }
 
 func BlogAPI() *http.ServeMux {
@@ -398,14 +412,19 @@ func BlogAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /posts", func(w http.ResponseWriter, r *http.Request) {
-		queries := utils.Database.StartQueries()
-		defer utils.Database.EndQueries()
+		queries, commit, rollback, err := utils.Database.StartReadTx(r.Context())
+		if err != nil {
+			panic("unable to start transaction on database: " + err.Error())
+		}
+		defer rollback(r.Context())
 
 		posts, err := queries.GetPublishedPosts(r.Context())
 		if err != nil {
 			templ.Handler(components.Error(err)).ServeHTTP(w, r)
 			return
 		}
+
+		_ = commit(r.Context())
 
 		templ.Handler(components.PostList(posts, false), templ.WithStreaming()).ServeHTTP(w, r)
 	})
