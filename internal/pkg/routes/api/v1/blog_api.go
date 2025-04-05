@@ -43,8 +43,6 @@ func cleanSlug(slug string) string {
 	return slugReplacer.Replace(strings.ToLower(strings.TrimSpace(slug)))
 }
 
-const blogAuthLogTag string = "blog-auth"
-
 func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
 	queries, commit, rollback, err := utils.Database.StartWriteTx(ctx)
 	if err != nil {
