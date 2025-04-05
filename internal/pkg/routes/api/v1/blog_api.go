@@ -79,7 +79,7 @@ func unpublish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) 
 	}
 
 	if rowsUpdated == 0 {
-		w.Log(middleware.Info, "Post already unpublished", "id")
+		w.Log(middleware.Info, "Post already unpublished", "id", id)
 	} else {
 		w.Log(middleware.Info, "Post unpublished", "id", id)
 	}

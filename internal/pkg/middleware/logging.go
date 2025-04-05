@@ -111,7 +111,7 @@ func (l *LoggingMiddleware) Log(level LoggerLevel, message string, attrs ...any)
 	case _warn:
 		f = logger.Warn
 	case _error:
-		f = logger.Warn
+		f = logger.Error
 	default:
 		f = logger.Info
 	}
