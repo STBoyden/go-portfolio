@@ -32,6 +32,6 @@ sql:
               type: "Time"
           - column: "posts.content"
             go_type:
-              import: "github.com/STBoyden/go-portfolio/internal/pkg/common/types"
+              import: "github.com/STBoyden/go-portfolio/internal/pkg/types"
               package: "types"
               type: "BlogContent"

@@ -6,8 +6,8 @@ import (
 	"github.com/STBoyden/gotenv/v2"
 
 	fs "github.com/STBoyden/go-portfolio"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/migrations"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 func main() {

@@ -15,12 +15,12 @@ import (
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+	"github.com/STBoyden/go-portfolio/internal/pkg/types"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 //nolint:gochecknoglobals // These are only accessible in the v1 package, and are not globally accessible by other packages.

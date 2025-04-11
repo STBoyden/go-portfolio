@@ -31,7 +31,7 @@ _docs: build_docs
 docs:
     go tool github.com/air-verse/air -c .air.docs.toml
 
-build: generate
+build: generate generate_db_types
     mkdir -p build
     go build -o build/portfolio ./cmd/main
 
@@ -40,6 +40,9 @@ cd_build: cd_prepare
 
 lint: generate
     go tool -modfile=golangci-lint.mod github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+lint_fix: generate
+    go tool -modfile=golangci-lint.mod github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
 
 dev:
     go tool github.com/air-verse/air

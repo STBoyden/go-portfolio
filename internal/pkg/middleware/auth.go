@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/consts"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 // AuthMiddleware is an extension over [LoggingMiddleware] (and by extension

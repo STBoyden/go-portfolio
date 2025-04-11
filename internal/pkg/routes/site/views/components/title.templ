@@ -1,6 +1,6 @@
 package components
 
-import "github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+import "github.com/STBoyden/go-portfolio/internal/pkg/utils"
 
 templ Title(text string, classes ...string) {
 	<h1 class={ utils.Cn("font-header text-2xl md:text-3xl font-bold mb-4", utils.Cn(classes...)) }>{ text }</h1>
