@@ -2,8 +2,7 @@
 @plugin "daisyui" {
     themes:
         light --default,
-        dark --prefersdark,
-        all;
+        dark --prefersdark;
 }
 
 @theme {
@@ -70,7 +69,7 @@
 #preview p {
     @apply mt-2;
     @apply mb-2;
-    @apply text-justify;
+    @apply lg:text-justify;
 }
 
 #preview h1 + p,
