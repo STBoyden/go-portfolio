@@ -7,16 +7,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/STBoyden/gotenv/v2"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 
+	"github.com/STBoyden/gotenv/v2"
+
 	fs "github.com/STBoyden/go-portfolio"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
 	"github.com/STBoyden/go-portfolio/internal/pkg/migrations"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 const (
@@ -52,13 +53,13 @@ func main() {
 
 	d, err := iofs.New(fs.MigrationsFS, "migrations")
 	if err != nil {
-		logger.Error("could not get migrations", "err", err)
+		logger.Error("Could not get migrations", "err", err)
 		return
 	}
 
 	err = migrations.RunMigrations(dbURL, "iofs", d)
 	if err != nil {
-		logger.Error("could not run migrations on database", "err", err)
+		logger.Error("Could not run migrations on database", "err", err)
 		return
 	}
 

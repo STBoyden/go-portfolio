@@ -1,36 +1,8 @@
 package components
 
-import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/icons"
-
 templ links() {
-	<li
-		class="sm:px-5 text-lg text-left cursor-pointer hover:underline"
-		hx-target="#body"
-		hx-swap="innerHTML"
-		hx-get="/"
-		hx-push-url="true"
-		preload-images="true"
-	>
-		Home
-	</li>
-	// <li
-	// 	class="sm:px-5 text-lg text-left cursor-pointer hover:underline"
-	// 	hx-target="#body"
-	// 	hx-swap="innerHTML"
-	// 	hx-get="/page/about"
-	// 	hx-replace-url="/about"
-	// >
-	// 	About
-	// </li>
-	<li
-		class="sm:px-5 text-lg text-left cursor-pointer hover:underline"
-		hx-target="#body"
-		hx-swap="innerHTML"
-		hx-get="/blog"
-		hx-push-url="true"
-	>
-		Blog
-	</li>
+	@NavLink("Home", "/")
+	@NavLink("Blog", "/blog")
 }
 
 templ Navbar() {
@@ -62,7 +34,7 @@ templ Navbar() {
 				hx-target="#body"
 			>Samuel Boyden</button>
 		</div>
-		<div class="[display:none] sm:navbar-center">
+		<div class="[display:none] sm:navbar-end">
 			<ul
 				tabindex="0"
 				class="menu menu-horizontal"
@@ -72,22 +44,10 @@ templ Navbar() {
 				@links()
 			</ul>
 		</div>
-		<div class="navbar-end">
-			<div class="mr-2">
-				<label class="toggle text-base-content">
-					<input
-						type="checkbox"
-						value="dark"
-						class="theme-controller"
-						x-data="{ isDark: localStorage.getItem('isdark') === 'true' }"
-						x-bind:checked="isDark"
-						x-init="$watch('isDark', x => localStorage.setItem('isdark', x))"
-						x-on:click="isDark = !isDark"
-					/>
-					@icons.Sun()
-					@icons.Moon()
-				</label>
-			</div>
-		</div>
+		// <div class="navbar-end">
+		// 	<div class="mr-2">
+		// 		@ThemeSwitcher()
+		// 	</div>
+		// </div>
 	</div>
 }

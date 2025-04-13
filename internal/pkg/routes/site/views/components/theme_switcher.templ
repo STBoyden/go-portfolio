@@ -1,0 +1,28 @@
+package components
+
+import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/icons"
+
+templ ThemeSwitcher() {
+	<script>
+	function setDarkMode(isDark) {
+	    localStorage.setItem('isdark', isDark);
+
+		console.log(isDark);
+		const value = isDark ? 'dark' : 'light';
+		document.getElementsByTagName("html")[0].setAttribute("data-theme", value);
+	}
+	</script>
+	<label class="toggle text-base-content">
+		<input
+			type="checkbox"
+			value="dark"
+			class="theme-controller"
+			x-data="{ isDark: localStorage.getItem('isdark') === 'true' }"
+			x-bind:checked="isDark"
+			x-init="$watch('isDark', setDarkMode)"
+			x-on:click="isDark = !isDark"
+		/>
+		@icons.Sun()
+		@icons.Moon()
+	</label>
+}

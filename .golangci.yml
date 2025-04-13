@@ -162,14 +162,14 @@ linters-settings:
         skipRecvDeref: false
 
   gofumpt:
-    module-path: github.com/STBoyden/go-portfolio
+    module-path: github.com/STBoyden
     extra-rules: true
 
   goimports:
     # A comma-separated list of prefixes, which, if set, checks import paths
     # with the given prefixes are grouped after 3rd-party packages.
     # Default: ""
-    local-prefixes: github.com/STBoyden/go-portfolio
+    local-prefixes: github.com/STBoyden
 
   govet:
     # Enable all analyzers.

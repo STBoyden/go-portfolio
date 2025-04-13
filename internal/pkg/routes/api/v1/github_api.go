@@ -11,8 +11,8 @@ import (
 	gh "github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+	"github.com/STBoyden/go-portfolio/internal/pkg/types"
 )
 
 type language struct {

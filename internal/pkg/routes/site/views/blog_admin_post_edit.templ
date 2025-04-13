@@ -37,6 +37,10 @@ func getEndpoint(isEditing bool, post *persistence.Post) templ.SafeURL {
 }
 
 templ BlogAdminPostEdit(_post *persistence.Post, isEditing bool) {
+	<script>
+	hljs.addPlugin(new HLJSLanguageDisplayPlugin());
+	hljs.highlightAll();
+	</script>
 	{{
 			post := getPostOrDefault(_post)
 	}}

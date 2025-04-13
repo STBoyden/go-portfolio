@@ -8,11 +8,11 @@ import (
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/handlers/htmx"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 func siteLog(logger *middleware.LoggingMiddleware, level middleware.LoggerLevel, message string, v ...any) {

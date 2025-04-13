@@ -15,12 +15,12 @@ import (
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/consts"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/types"
-	"github.com/STBoyden/go-portfolio/internal/pkg/common/utils"
+	"github.com/STBoyden/go-portfolio/internal/pkg/consts"
 	"github.com/STBoyden/go-portfolio/internal/pkg/middleware"
 	"github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 	"github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+	"github.com/STBoyden/go-portfolio/internal/pkg/types"
+	"github.com/STBoyden/go-portfolio/internal/pkg/utils"
 )
 
 //nolint:gochecknoglobals // These are only accessible in the v1 package, and are not globally accessible by other packages.
@@ -41,6 +41,10 @@ var slugReplacer = strings.NewReplacer(" ", "-", "_", "-", "+", "-")
 func cleanSlug(slug string) string {
 	slug = url.PathEscape(slug)
 	return slugReplacer.Replace(strings.ToLower(strings.TrimSpace(slug)))
+}
+
+func cleanContent(content string) string {
+	return strings.ReplaceAll(content, "`", "${\"`\"}")
 }
 
 func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
@@ -115,6 +119,7 @@ func blogAdmin() *http.ServeMux {
 		}
 
 		slug = cleanSlug(slug)
+		content = cleanContent(content)
 
 		blogContent := types.BlogContent{
 			Title: title,
@@ -172,6 +177,9 @@ func blogAdmin() *http.ServeMux {
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
+
+		content = cleanContent(content)
+		println(content)
 
 		blogContent := types.BlogContent{Title: title, Text: content}
 		contentBuffer, err := json.Marshal(&blogContent)
