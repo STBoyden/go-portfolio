@@ -1,6 +1,10 @@
 install_deps:
     pnpm install
     mkdir -p static/js
+    mkdir -p static/css/vendor
+    cp node_modules/@highlightjs/cdn-assets/highlight.min.js static/js
+    cp node_modules/@highlightjs/cdn-assets/styles/github.min.css static/css/vendor
+    cp node_modules/@highlightjs/cdn-assets/styles/github-dark.min.css static/css/vendor
     cp node_modules/htmx.org/dist/htmx.min.js static/js
     cp node_modules/htmx-ext-preload/dist/preload.min.js static/js/htmx-preload.min.js
     cp node_modules/alpinejs/dist/cdn.min.js static/js/alpinejs.min.js

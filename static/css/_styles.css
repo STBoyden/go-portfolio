@@ -2,13 +2,13 @@
 @plugin "daisyui" {
     themes:
         light --default,
-        dark --prefersDark,
+        dark --prefersdark,
         all;
 }
 
 @theme {
     --default-font-family: "Monaspace Krypton";
-    --default-mono-font-family: "Monaspace Argon";
+    --default-mono-font-family: "Monaspace Neon";
 }
 
 :root {
@@ -34,6 +34,13 @@
 }
 
 @font-face {
+    font-family: "Monaspace Neon";
+    font-style: normal;
+    font-display: swap;
+    src: url("/static/fonts/MonaspaceNeon-Regular.woff2") format("woff2");
+}
+
+@font-face {
     font-family: "Monaspace Xenon Bold";
     font-style: bold;
     src: url("/static/fonts/MonaspaceXenon-Bold.woff2") format("woff2");
@@ -43,24 +50,33 @@
 #preview h2,
 #preview h3 {
     @apply font-bold;
+    @apply mt-8;
     @apply mb-4;
     font-family: var(--font-header);
 }
 
 #preview h1 {
-    @apply text-xl;
+    @apply text-2xl;
 }
 
 #preview h2 {
-    @apply text-lg;
+    @apply text-xl;
 }
 
 #preview h3 {
-    @apply text-sm;
+    @apply text-lg;
 }
 
 #preview p {
+    @apply mt-2;
     @apply mb-2;
+    @apply text-justify;
+}
+
+#preview h1 + p,
+h2 + p,
+h3 + p {
+    margin-top: 0 !important;
 }
 
 #preview a {
@@ -70,8 +86,34 @@
 }
 
 #preview pre {
-    @apply bg-base-300;
     @apply rounded-lg;
     @apply p-2;
     @apply my-1;
+    @apply overflow-x-auto;
 }
+
+#preview pre code {
+    @apply rounded-lg;
+}
+
+#preview ol {
+    counter-reset: section;
+    list-style-type: none;
+    @apply pl-2;
+}
+#preview ol li:before {
+    counter-increment: section;
+    font-weight: 700;
+    content: counters(section, ".") ". ";
+}
+#preview ul {
+    counter-reset: section;
+    list-style-type: lower-alpha;
+}
+#preview ul li:before {
+    counter-increment: section;
+    content: "";
+}
+
+@import "./vendor/github.min.css" screen;
+@import "./vendor/github-dark.min.css" screen and (prefers-color-scheme: dark);

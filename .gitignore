@@ -3,6 +3,7 @@
 /node_modules/
 /tmp
 /static/css/styles.css
+/static/css/vendor/
 /static/js/
 /internal/pkg/persistence
 .env

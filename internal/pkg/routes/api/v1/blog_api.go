@@ -43,6 +43,10 @@ func cleanSlug(slug string) string {
 	return slugReplacer.Replace(strings.ToLower(strings.TrimSpace(slug)))
 }
 
+func cleanContent(content string) string {
+	return strings.ReplaceAll(content, "`", "${\"`\"}")
+}
+
 func publish(ctx context.Context, w *middleware.AuthMiddleware, id uuid.UUID) error {
 	queries, commit, rollback, err := utils.Database.StartWriteTx(ctx)
 	if err != nil {
@@ -115,6 +119,7 @@ func blogAdmin() *http.ServeMux {
 		}
 
 		slug = cleanSlug(slug)
+		content = cleanContent(content)
 
 		blogContent := types.BlogContent{
 			Title: title,
@@ -172,6 +177,9 @@ func blogAdmin() *http.ServeMux {
 			w.PrepareHeader(http.StatusBadRequest)
 			return
 		}
+
+		content = cleanContent(content)
+		println(content)
 
 		blogContent := types.BlogContent{Title: title, Text: content}
 		contentBuffer, err := json.Marshal(&blogContent)

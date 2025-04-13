@@ -2,6 +2,7 @@ package views
 
 import "github.com/STBoyden/go-portfolio/internal/pkg/persistence"
 import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/components"
+import "fmt"
 
 func yesOrNo(isPublished bool) string {
 	if isPublished {
@@ -12,7 +13,11 @@ func yesOrNo(isPublished bool) string {
 }
 
 templ BlogPost(post persistence.Post, showAdminInformation bool) {
-	<div class="lg:w-[65%] my-2 mx-auto">
+	<script>
+	hljs.addPlugin(new HLJSLanguageDisplayPlugin());
+	hljs.highlightAll();
+	</script>
+	<div class="lg:w-[65%] my-2 mx-auto" x-data={ fmt.Sprintf("{content: `%s`}", post.Content.Text) }>
 		@components.Title(post.Content.Title, "text-center", "lg:text-left")
 		//
 		<div class="mt-2 mb-4">
@@ -43,8 +48,9 @@ templ BlogPost(post persistence.Post, showAdminInformation bool) {
 			}
 		</div>
 		//
-		<div id="preview" class="mt-8">
+		<div id="preview" class="mt-8" x-show="content == ''">
 			@templ.Raw(post.Content.Text)
 		</div>
+		<div id="preview" class="mt-8" x-show="content != ''" x-html="content"></div>
 	</div>
 }

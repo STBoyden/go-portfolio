@@ -4,13 +4,16 @@ import "github.com/STBoyden/go-portfolio/internal/pkg/routes/site/views/componen
 
 templ Root(subview templ.Component) {
 	<!DOCTYPE html>
-	<html>
+	<html data-theme="system">
 		<head>
 			<title>Samuel Boyden</title>
 			<link href="/static/css/styles.css" rel="stylesheet"/>
 			<script src="/static/js/htmx.min.js" defer></script>
 			<script src="/static/js/htmx-preload.min.js" defer></script>
 			<script src="/static/js/alpinejs.min.js" defer></script>
+			<script src="/static/js/highlight.min.js"></script>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/crpietschmann/hljslanguagedisplayplugin@v1.0/dist/css/hljslanguagedisplayplugin.css"/>
+			<script src="https://cdn.jsdelivr.net/gh/crpietschmann/hljslanguagedisplayplugin@v1.0/dist/js/hljslanguagedisplayplugin.js"></script>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		</head>
 		<body hx-ext="preload">
